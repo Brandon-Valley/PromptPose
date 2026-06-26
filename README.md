@@ -8,4 +8,4 @@ PromptPose is a standalone HTML pose and animation tool for building, saving, im
 
 Deployment source: master branch root.
 
-Rebuild trigger: 2026-06-26 10:55 CT.
+Rebuild trigger: 2026-06-26 10:58 CT.
