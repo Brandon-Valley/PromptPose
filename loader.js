@@ -1,0 +1,1 @@
+console.log('PromptPose loader placeholder');
