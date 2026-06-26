@@ -6,6 +6,6 @@ Repository: https://github.com/Brandon-Valley/PromptPose
 
 PromptPose is a standalone HTML pose and animation tool for building, saving, importing, and exporting 3D stick figure poses and animation JSON.
 
-## Deployment
+Deployment source: master branch root.
 
-This repository deploys automatically to GitHub Pages from the `master` branch using GitHub Actions.
+Rebuild trigger: 2026-06-26 10:55 CT.
