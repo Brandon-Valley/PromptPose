@@ -1,0 +1,2565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>3D Stick Figure Pose - Animation and Cube Fixed</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #111111;
+    --line: #2a2a2a;
+    --soft: rgba(255,255,255,0.86);
+    --soft2: rgba(255,255,255,0.72);
+    --border: #888;
+    --red: #ef2f3f;
+    --blue: #2649e8;
+    --green: #1fb55b;
+    --gold: #c8953d;
+    --cyan: #15aee5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+    color: var(--ink);
+    font-family: Arial, Helvetica, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    background: #fff;
+    touch-action: none;
+  }
+
+  button, input, select, textarea { font: inherit; }
+  button {
+    border: 2px solid #333;
+    background: rgba(255,255,255,0.82);
+    color: #111;
+    border-radius: 8px;
+    min-height: 36px;
+    padding: 5px 8px;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  }
+  button:active { transform: translateY(1px); }
+  button.active { outline: 3px solid rgba(22,174,229,0.65); border-color: #008fc4; }
+  button.danger { color: #bd2130; border-color: #bd2130; }
+
+  .appTop {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    height: 48px;
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) auto auto 44px;
+    gap: 7px;
+    align-items: center;
+    z-index: 60;
+    pointer-events: auto;
+  }
+  .appTop input {
+    width: 100%;
+    height: 40px;
+    border: 2px solid #222;
+    border-radius: 7px;
+    padding: 5px 9px;
+    background: rgba(255,255,255,0.88);
+    font-weight: 500;
+  }
+  .roundBtn {
+    min-width: 40px;
+    width: 40px;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .viewportFrame {
+    position: fixed;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    top: calc(max(8px, env(safe-area-inset-top)) + 54px);
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 214px);
+    border: 2px solid rgba(0,0,0,0.74);
+    z-index: 4;
+    pointer-events: none;
+  }
+  .readout {
+    position: fixed;
+    top: calc(max(8px, env(safe-area-inset-top)) + 58px);
+    left: calc(max(8px, env(safe-area-inset-left)) + 50px);
+    right: calc(max(8px, env(safe-area-inset-right)) + 56px);
+    z-index: 30;
+    pointer-events: none;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    color: rgba(0,0,0,0.76);
+    text-shadow: 0 1px 0 white;
+  }
+
+  .sideTools {
+    position: fixed;
+    top: calc(max(8px, env(safe-area-inset-top)) + 78px);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    pointer-events: auto;
+  }
+  .sideTools.left { left: max(8px, env(safe-area-inset-left)); }
+  .sideTools.right { right: max(8px, env(safe-area-inset-right)); }
+  .sideTools button {
+    min-width: 44px;
+    width: 44px;
+    min-height: 40px;
+    padding: 2px;
+    background: rgba(255,255,255,0.62);
+    border-color: rgba(30,30,30,0.70);
+    font-size: 14px;
+  }
+  .miniIcon { font-size: 22px; font-weight: 900; }
+  .gridRed { color: var(--red); }
+  .gridBlue { color: var(--blue); }
+  .gridGreen { color: var(--green); }
+
+  .bottomDock {
+    position: fixed;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    height: 206px;
+    z-index: 50;
+    background: rgba(255,255,255,0.78);
+    border: 2px solid rgba(50,50,50,0.72);
+    border-radius: 9px;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.10);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dockTop {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 5px;
+    align-items: center;
+    padding: 5px 7px 3px;
+    border-bottom: 1px solid rgba(0,0,0,0.18);
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .dockTop button { min-height: 31px; padding: 3px 7px; font-size: 13px; }
+  #selectedLabel { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sliderArea { padding: 3px 7px 6px; }
+  .row {
+    display: grid;
+    grid-template-columns: 64px 30px 1fr 30px;
+    gap: 5px;
+    align-items: center;
+    min-height: 34px;
+  }
+  .row > label { font-size: 16px; font-weight: 800; white-space: nowrap; }
+  .row button {
+    min-width: 30px;
+    width: 30px;
+    min-height: 30px;
+    height: 30px;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 900;
+  }
+  .row input[type="range"] {
+    width: 100%;
+    accent-color: #111;
+    min-height: 36px;
+    height: 36px;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .row input[type="range"]::-webkit-slider-thumb {
+    width: 30px;
+    height: 30px;
+  }
+  .bottomDock, .bottomDock * {
+    touch-action: manipulation;
+  }
+  .bottomDock input[type="range"] {
+    touch-action: none;
+  }
+  .xrow label, .xrow button { color: var(--red); border-color: var(--red); }
+  .yrow label, .yrow button { color: var(--green); border-color: var(--green); }
+  .zrow label, .zrow button { color: var(--blue); border-color: var(--blue); }
+  .bodyrow label { color: #111; }
+  .bottomDock.adjusting {
+    background: rgba(255,255,255,0.35);
+    opacity: 0.72;
+  }
+
+  .animeBar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 5px 7px;
+    border-bottom: 1px solid rgba(0,0,0,0.18);
+    overflow-x: auto;
+  }
+  .animeBar button { min-height: 32px; padding: 3px 8px; font-size: 13px; }
+  .thumbs { display: flex; gap: 7px; flex: 1; min-width: 120px; overflow-x: auto; }
+  .thumb {
+    flex: 0 0 56px;
+    height: 54px;
+    border: 2px solid rgba(0,0,0,0.16);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.72);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    color: #888;
+  }
+  .thumb.active { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(21,174,229,0.18); }
+  .thumb.hasPose { color:#333; background:rgba(255,255,255,0.92); }
+  .thumb.playing { box-shadow: 0 0 0 3px rgba(21,174,229,0.35); }
+  .frameBtns { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
+  .frameBtns button { min-width:42px; }
+
+  .settingsPanel {
+    position: fixed;
+    top: calc(max(8px, env(safe-area-inset-top)) + 54px);
+    right: max(8px, env(safe-area-inset-right));
+    width: min(295px, calc(100vw - 34px));
+    max-height: calc(100vh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom)) - 78px);
+    overflow: auto;
+    background: rgba(255,255,255,0.92);
+    border: 2px solid #111;
+    border-radius: 9px;
+    z-index: 80;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.20);
+    display: none;
+  }
+  .settingsPanel.open { display: block; }
+  .settingsTitle {
+    background: #000;
+    color: #fff;
+    font-weight: 900;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .settingsPanel .settingRow { padding: 7px 10px; border-bottom: 1px solid #d0d0d0; font-size: 14px; }
+  .settingsPanel input[type="range"] { width: 100%; accent-color: #111; }
+  .settingsPanel textarea { width: 100%; min-height: 58px; border: 1px solid #999; border-radius: 6px; }
+  .settingsPanel select, .settingsPanel input[type="text"] { width: 100%; border: 1px solid #999; border-radius: 6px; min-height: 34px; padding: 4px 7px; }
+  .settingGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 5px; }
+
+
+  .promptBuilder {
+    position: fixed;
+    inset: 0;
+    z-index: 320;
+    display: none;
+    background: #f7f7f4;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .promptBuilder.open { display: grid; grid-template-rows: auto 1fr auto; }
+  .promptHeader {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: calc(max(10px, env(safe-area-inset-top))) 12px 8px;
+    border-bottom: 3px solid #111;
+    background: #ffffff;
+  }
+  .promptHeader h1 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.1;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .promptHeader small { display:block; color:#555; font-size: 12px; margin-top: 3px; font-weight: 700; }
+  .promptHeader button, .promptFooter button, .promptGrid button {
+    border: 2px solid #111;
+    background: #fff;
+    min-height: 36px;
+    border-radius: 8px;
+    font-weight: 900;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.20);
+  }
+  .promptMain {
+    overflow: auto;
+    padding: 8px 12px 104px;
+    display: block;
+  }
+  .promptCard {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .promptCard + .promptCard {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 3px solid #111;
+  }
+  .promptCardTitle {
+    background: transparent;
+    color: #111;
+    padding: 2px 0 7px;
+    margin: 0 0 7px;
+    border-bottom: 2px solid #111;
+    font-weight: 900;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .promptCardTitle button { display: none; }
+  .promptCardBody { padding: 0; }
+  .promptGrid { display: grid; grid-template-columns: 1fr; gap: 9px; }
+  .promptGrid label { font-weight: 900; font-size: 13px; display:grid; gap:4px; }
+  .promptGrid select, .promptGrid input[type='text'], .promptGrid textarea {
+    width: 100%;
+    border: 2px solid #999;
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 14px;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .promptGrid textarea { min-height: 88px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .promptChecks { display:grid; gap:7px; font-size: 13px; font-weight: 800; }
+  .promptChecks label { display:flex; align-items:center; gap:8px; font-weight: 800; }
+  .promptCheckLine { display:flex; align-items:center; gap:8px; font-weight:800; }
+  .helpBtn {
+    min-width: 24px !important;
+    width: 24px;
+    min-height: 24px !important;
+    height: 24px;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+  }
+  .helpText {
+    user-select: text;
+    -webkit-user-select: text;
+    font-size: 14px;
+    line-height: 1.42;
+  }
+  .promptOutput {
+    width: 100%;
+    min-height: 45vh;
+    resize: vertical;
+    border: 2px solid #111;
+    outline: none;
+    padding: 11px;
+    box-sizing: border-box;
+    font-size: 13px;
+    line-height: 1.38;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #fff;
+  }
+  .promptJson { min-height: 24vh; }
+  .promptFooter {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 321;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 9px 12px calc(max(9px, env(safe-area-inset-bottom)));
+    border-top: 2px solid #111;
+    background: rgba(255,255,255,0.96);
+  }
+
+  .promptFileNameBlock { display: none; }
+  .promptInlineHelp {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .helpText ul { margin: 8px 0 0 20px; padding: 0; }
+  .helpText li { margin: 5px 0; }
+  .hiddenFileInput { display: none !important; }
+
+  .promptHint {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+
+  @media (max-width: 640px) {
+    .promptMain {
+      padding: 7px 8px 108px;
+    }
+    .promptHeader { padding-left: 8px; padding-right: 8px; }
+    .promptHeader h1 { font-size: 16px; }
+    .promptHeader small { font-size: 11px; }
+    .promptOutput { min-height: 32vh; font-size: 12px; }
+    .promptJson { min-height: 22vh; }
+    .promptFooter { grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .promptFooter button { font-size: 12px; padding-left: 4px; padding-right: 4px; }
+  }
+
+
+  .dialogShade {
+    position: fixed;
+    inset: 0;
+    z-index: 420;
+    display: none;
+    background: rgba(0,0,0,0.18);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .dialogShade.open { display: flex; }
+  .poseDialog {
+    width: min(360px, calc(100vw - 28px));
+    max-height: min(520px, calc(100vh - 80px));
+    overflow: auto;
+    background: rgba(255,255,255,0.96);
+    border: 2px solid #111;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+  }
+  .dialogHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ccc;
+    font-weight: 900;
+  }
+  .dialogBody { padding: 10px 12px 12px; }
+  .savedPoseBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 42px;
+    margin: 0 0 7px;
+    text-align: left;
+    background: rgba(255,255,255,0.88);
+  }
+  .savedPoseBtn small { color: #666; font-weight: 700; }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 224px);
+    transform: translateX(-50%) translateY(10px);
+    z-index: 700;
+    max-width: min(360px, calc(100vw - 24px));
+    padding: 8px 12px;
+    border: 2px solid #111;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.94);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    font-weight: 800;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .flashSuccess {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 0 0 4px rgba(31,181,91,0.24) !important;
+  }
+  .flashWork {
+    background: #fff7d1 !important;
+    color: #111 !important;
+    border-color: #111 !important;
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 0 0 4px rgba(200,149,61,0.28) !important;
+  }
+  .flashError {
+    background: #bd2130 !important;
+    color: #fff !important;
+    border-color: #bd2130 !important;
+    box-shadow: 0 0 0 4px rgba(189,33,48,0.22) !important;
+  }
+  .importErrorText {
+    width: 100%;
+    min-height: 210px;
+    resize: vertical;
+    border: 2px solid #111;
+    border-radius: 8px;
+    padding: 9px;
+    font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #fff;
+    color: #111;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .dialogActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 9px;
+  }
+  .dialogHint {
+    margin: 0 0 8px;
+    color: #333;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .hiddenLegacy { display:none !important; }
+  .status { display:none; }
+  .panel { display:block; }
+  #posePanel { display:block; }
+  #toolsPanel { display:none; }
+
+
+  @media (max-width: 520px) {
+    .appTop {
+      height: 42px;
+      grid-template-columns: minmax(98px, 1fr) 64px 64px 42px;
+      gap: 6px;
+      top: max(7px, env(safe-area-inset-top));
+    }
+    .appTop input { height: 36px; padding: 4px 8px; font-size: 15px; }
+    .appTop button { min-height: 36px; padding: 3px 5px; font-size: 14px; }
+    .roundBtn { width: 38px; min-width: 38px; font-size: 22px; }
+    .viewportFrame {
+      top: calc(max(7px, env(safe-area-inset-top)) + 48px);
+      bottom: calc(max(7px, env(safe-area-inset-bottom)) + 188px);
+      left: max(7px, env(safe-area-inset-left));
+      right: max(7px, env(safe-area-inset-right));
+    }
+    .readout {
+      top: calc(max(7px, env(safe-area-inset-top)) + 51px);
+      left: calc(max(7px, env(safe-area-inset-left)) + 58px);
+      right: calc(max(7px, env(safe-area-inset-right)) + 58px);
+      font-size: 10px;
+      letter-spacing: -0.15px;
+    }
+    .sideTools {
+      top: calc(max(7px, env(safe-area-inset-top)) + 94px);
+      gap: 3px;
+    }
+    .sideTools.left { left: calc(max(7px, env(safe-area-inset-left)) + 1px); }
+    .sideTools.right { right: calc(max(7px, env(safe-area-inset-right)) + 1px); }
+    .sideTools button {
+      min-width: 40px;
+      width: 40px;
+      min-height: 34px;
+      height: 34px;
+      border-width: 2px;
+      border-radius: 7px;
+      font-size: 13px;
+      background: rgba(255,255,255,0.55);
+    }
+    .miniIcon { font-size: 18px; }
+    .bottomDock {
+      height: 178px;
+      border-radius: 8px;
+      overflow-y: auto;
+    }
+    .animeBar {
+      gap: 5px;
+      padding: 4px 5px;
+      font-size: 13px;
+    }
+    .animeBar button { min-height: 28px; padding: 2px 5px; font-size: 11px; }
+    .thumb { flex-basis: 42px; height: 38px; }
+    .frameBtns { gap:3px; }
+    .frameBtns button { min-width:34px; padding-left:3px; padding-right:3px; }
+    .dockTop {
+      grid-template-columns: minmax(92px, 1fr) 0 auto auto auto;
+      gap: 4px;
+      padding: 4px 5px;
+      font-size: 13px;
+    }
+    .dockTop button { min-height: 29px; padding: 2px 6px; font-size: 12px; }
+    .sliderArea { padding: 2px 5px 6px; }
+    .row {
+      grid-template-columns: 52px 28px 1fr 28px;
+      gap: 4px;
+      min-height: 32px;
+    }
+    .row > label { font-size: 14px; }
+    .row button { min-width: 27px; width: 27px; min-height: 27px; height: 27px; font-size: 20px; }
+    .row input[type="range"] { min-height: 27px; }
+    .settingGrid { grid-template-columns: 1fr 1fr; gap: 5px; }
+    .settingGrid button { min-height: 30px; font-size: 12px; padding: 2px 5px; }
+    .settingsPanel {
+      top: calc(max(7px, env(safe-area-inset-top)) + 48px);
+      width: min(276px, calc(100vw - 24px));
+      max-height: calc(100vh - max(7px, env(safe-area-inset-top)) - max(7px, env(safe-area-inset-bottom)) - 62px);
+      font-size: 13px;
+    }
+    .settingsTitle { padding: 6px 8px; }
+    .settingsPanel .settingRow { padding: 6px 8px; }
+  }
+
+  @media (min-width: 800px) {
+    .appTop { left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 28px)); }
+    .viewportFrame { left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 28px)); right: auto; }
+    .bottomDock { left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 28px)); right: auto; }
+    .sideTools.left { left: calc(50% - min(310px, calc((100vw - 28px)/2))); }
+    .sideTools.right { right: calc(50% - min(310px, calc((100vw - 28px)/2))); }
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="viewportFrame"></div>
+<div class="readout" id="readout">Yaw -35.0° &nbsp; Pitch +14.0° &nbsp; Roll +0.0° &nbsp; O.scale 193.5</div>
+
+<div class="appTop">
+  <input id="poseName" type="text" value="walk01_M" placeholder="pose name">
+  <button id="savePose">SAVE</button>
+  <button id="loadPose">LOAD</button>
+  <button id="toolsBtn" class="roundBtn">...</button>
+</div>
+<button id="poseBtn" class="hiddenLegacy">Pose</button>
+<button id="hideBtn" class="hiddenLegacy">Hide</button>
+
+<div class="sideTools left">
+  <button id="btnToggle">Btn</button>
+  <button id="dotToggle" class="active">Dot</button>
+  <button id="gridBtn" class="active miniIcon gridGreen">▦</button>
+  <button id="xGridBtn" class="miniIcon gridRed">▦</button>
+  <button id="zGridBtn" class="miniIcon gridBlue">▦</button>
+  <button id="axisBtn" class="active miniIcon">✣</button>
+  <button id="pngBtn">📷</button>
+  <button id="lockBtn">🔒</button>
+</div>
+
+<div class="sideTools right">
+  <button data-view="home">＋</button>
+  <button data-view="front">FR</button>
+  <button data-view="back">BK</button>
+  <button data-view="left">LF</button>
+  <button data-view="right">RT</button>
+  <button data-view="top">TOP</button>
+  <button data-view="bottom">BOT</button>
+  <button data-view="reset">↺</button>
+</div>
+
+<section class="bottomDock" id="posePanel">
+  <div class="animeBar">
+    <strong>Anime List:</strong>
+    <button id="playAnim">Play</button>
+    <button id="stopAnim">Stop</button>
+    <div class="thumbs" id="thumbs"><div class="thumb active">1</div></div><span id="keyList" class="hiddenLegacy"></span>
+    <div class="frameBtns">
+      <button id="addKey">Add</button>
+      <button id="insertKey">Ins</button>
+      <button id="overwriteKey">Over</button>
+      <button id="deleteKey" class="danger">Del</button>
+      <button id="clearKeys">Clear</button>
+    </div>
+  </div>
+  <div class="dockTop">
+    <span id="selectedLabel">[Part] : Pelvis</span>
+    <span></span>
+    <button id="flipLR">Mirror</button>
+    <button id="modeBtn">Body Move</button>
+    <button id="closeDock">Close</button>
+  </div>
+  <select id="jointSelect" class="hiddenLegacy"></select>
+  <div class="sliderArea">
+    <div id="jointControls"></div>
+    <div id="bodyControls"></div>
+    <div class="settingGrid">
+      <button id="zeroJoint">Zero part</button>
+      <button id="centerBody">Center body</button>
+      <button id="prevJoint">Prev</button>
+      <button id="nextJoint">Next</button>
+    </div>
+  </div>
+</section>
+
+<section class="settingsPanel" id="toolsPanel">
+  <div class="settingsTitle">BASIC SETTINGS <button id="settingsClose" style="min-height:24px;height:24px;padding:0 6px;border-color:white;color:white;background:#000;box-shadow:none">−</button></div>
+  <div class="settingRow">Line width <input id="lineWidth" type="range" min="3" max="12" value="6"></div>
+  <div class="settingRow">Head size <input id="headSize" type="range" min="18" max="48" value="32"></div>
+  <div class="settingRow"><label><input id="perspectiveToggle" type="checkbox" checked> Perspective ON</label></div>
+  <div class="settingRow"><label><input id="monochromeToggle" type="checkbox"> Monochrome limbs</label></div>
+  <div class="settingsTitle">POSE TOOLS <span>−</span></div>
+  <div class="settingRow">
+    <div class="settingGrid">
+      <button id="resetPose" class="danger">Return to initial pose</button>
+      <button id="flipUD">Flip vertically</button>
+      <button id="undoBtn">Undo</button>
+      <button id="redoBtn">Redo</button>
+      <button id="exportPose">Export pose</button>
+      <button id="exportAnim">Export animation</button>
+      <button id="promptBuilderBtn">Prompt builder</button>
+    </div>
+  </div>
+  <div class="settingsTitle">ANIMATION SETTING <span>−</span></div>
+  <div class="settingRow">Interpolated Frames <input id="blend" type="range" min="0" max="20" value="6"></div>
+  <div class="settingRow">FPS <input id="fps" type="range" min="1" max="60" value="24"></div>
+  <div class="settingsTitle">BACKUP & RESTORE <span>−</span></div>
+  <div class="settingRow">
+    <select id="savedList"></select>
+    <div class="settingGrid">
+      <button id="deletePose">Delete</button>
+      <button id="importPose">Import pasted</button>
+      <button id="importJsonFileBtn">Import .json file</button>
+      <input id="importJsonFile" class="hiddenFileInput" type="file" accept="application/json,.json">
+    </div>
+    <textarea id="importBox" placeholder="Paste exported pose JSON here"></textarea>
+  </div>
+  <div class="settingsTitle">INFORMATION <span>−</span></div>
+  <div class="settingRow">Version 2.1.0 - standalone HTML</div>
+</section>
+
+
+<div class="dialogShade" id="loadDialog" aria-hidden="true">
+  <div class="poseDialog" role="dialog" aria-modal="true" aria-labelledby="loadDialogTitle">
+    <div class="dialogHead">
+      <span id="loadDialogTitle">Load saved pose</span>
+      <button id="loadDialogClose" type="button">Close</button>
+    </div>
+    <div class="dialogBody" id="loadDialogBody"></div>
+  </div>
+</div>
+
+<div class="dialogShade" id="importErrorDialog" aria-hidden="true">
+  <div class="poseDialog" role="dialog" aria-modal="true" aria-labelledby="importErrorTitle">
+    <div class="dialogHead">
+      <span id="importErrorTitle">Import error details</span>
+      <button id="importErrorClose" type="button">Close</button>
+    </div>
+    <div class="dialogBody">
+      <p class="dialogHint">Copy this and paste it into the LLM so it can fix the JSON.</p>
+      <textarea id="importErrorText" class="importErrorText" readonly inputmode="none" tabindex="-1"></textarea>
+      <div class="dialogActions">
+        <button id="importErrorCopy" type="button">Copy error</button>
+        <button id="importErrorClose2" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dialogShade" id="worldHelpDialog" aria-hidden="true">
+  <div class="poseDialog" role="dialog" aria-modal="true" aria-labelledby="worldHelpTitle">
+    <div class="dialogHead">
+      <span id="worldHelpTitle">World-space joint positions</span>
+      <button id="worldHelpClose" type="button">Close</button>
+    </div>
+    <div class="dialogBody helpText">
+      <p><b>World-space joint positions</b> are the actual 3D locations of each body part after all the rotations are applied.</p>
+      <p>Example: instead of only saying the left shoulder rotated 40 degrees, it can also say the left hand is at x -1.25, y 1.80, z 0.10.</p>
+      <p>Leave this on when you want the LLM to understand or preserve the visible pose shape. Turn it off when you want a shorter prompt, especially for long animations.</p>
+    </div>
+  </div>
+</div>
+
+<div class="dialogShade" id="jsonFileHelpDialog" aria-hidden="true">
+  <div class="poseDialog" role="dialog" aria-modal="true" aria-labelledby="jsonFileHelpTitle">
+    <div class="dialogHead">
+      <span id="jsonFileHelpTitle">Downloadable JSON file output</span>
+      <button id="jsonFileHelpClose" type="button">Close</button>
+    </div>
+    <div class="dialogBody helpText">
+      <p>This file-name option appears automatically when the requested animation is at least <b>50 frames</b>.</p>
+      <p>Long animation JSON can be too large for normal copy/paste in some LLM apps. When this appears, the generated prompt tells the LLM to provide its answer as a downloadable <b>.json</b> file using this file name.</p>
+      <p>You can then use <b>Import .json file</b> in Backup &amp; Restore to load that file back into this pose tool.</p>
+    </div>
+  </div>
+</div>
+
+<div class="promptBuilder" id="promptBuilder" aria-hidden="true">
+  <div class="promptHeader">
+    <div>
+      <h1>LLM Prompt Builder</h1>
+      <small>Turn the current pose or full animation into precise text and JSON for ChatGPT or another LLM.</small>
+    </div>
+    <button id="promptClose" type="button">Close</button>
+  </div>
+  <div class="promptMain">
+    <section class="promptCard">
+      <div class="promptCardTitle">Prompt setup</div>
+      <div class="promptCardBody promptGrid">
+        <label>Goal
+          <select id="pbGoal">
+            <option value="image">Describe this pose for image generation</option>
+            <option value="pose">Ask an LLM to generate a new pose</option>
+            <option value="animation_new">Ask an LLM to generate a new animation</option>
+            <option value="animation_edit">Ask an LLM to edit an existing animation</option>
+            <option value="dev">Programmatic export / developer context</option>
+          </select>
+        </label>
+        <label>Use data from
+          <select id="pbScope">
+            <option value="default">Fresh default start, no current editor data</option>
+            <option value="current">Current pose only</option>
+            <option value="animation">Full animation frames</option>
+            <option value="both">Current pose and full animation</option>
+          </select>
+        </label>
+        <label>Detail level
+          <select id="pbDetail">
+            <option value="normal">Normal</option>
+            <option value="compact">Compact</option>
+            <option value="detailed">Detailed</option>
+          </select>
+        </label>
+        <div class="promptGrid promptTiming" id="pbTimingBlock">
+          <label>Animation length, seconds
+            <input id="pbDuration" type="number" min="0.25" max="60" step="0.25" value="3">
+          </label>
+          <label>Animation FPS
+            <input id="pbFps" type="number" min="1" max="60" step="1" value="24">
+          </label>
+          <label id="pbJsonFileBlock" class="promptFileNameBlock">Output .json file name
+            <span class="promptInlineHelp">
+              <input id="pbJsonFileName" type="text" value="stick_figure_animation.json" placeholder="stick_figure_animation.json">
+              <button id="pbJsonFileHelp" class="helpBtn" type="button" aria-label="Explain downloadable JSON file output">?</button>
+            </span>
+          </label>
+        </div>
+        <label>Extra instruction to include
+          <textarea id="pbExtra" placeholder="Example: keep the torso facing forward, make the right hand touch a wall, preserve this silhouette, etc."></textarea>
+        </label>
+        <div class="promptChecks">
+          <label><input id="pbIncludeJson" type="checkbox" checked> Include raw structured JSON inside the prompt</label>
+          <div class="promptCheckLine">
+            <label><input id="pbIncludeWorld" type="checkbox" checked> Include world-space joint positions</label>
+            <button id="pbWorldHelp" class="helpBtn" type="button" aria-label="Explain world-space joint positions">?</button>
+          </div>
+          <label id="pbCameraCheck"><input id="pbIncludeCamera" type="checkbox" checked> Include current camera/view direction</label>
+        </div>
+        <div class="promptHint">Tip: animation prompts now use compact sampled-frame JSON. The LLM should output one compact frame per rendered frame, while each frame only lists changed joints.</div>
+      </div>
+    </section>
+    <section class="promptCard">
+      <div class="promptCardTitle">Generated prompt</div>
+      <textarea id="promptText" class="promptOutput" spellcheck="false" readonly inputmode="none" tabindex="-1"></textarea>
+      <div class="promptCardTitle">Structured JSON</div>
+      <textarea id="promptJson" class="promptOutput promptJson" spellcheck="false" readonly inputmode="none" tabindex="-1"></textarea>
+    </section>
+  </div>
+  <div class="promptFooter">
+    <button id="promptCopy" type="button">Copy</button>
+    <button id="promptCopyJson" type="button">Copy JSON</button>
+    <button id="promptDone" type="button">Done</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="status" id="status"></div>
+<script>
+(function(){
+  var canvas = document.getElementById('stage');
+  var ctx = canvas.getContext('2d');
+  var W = 1, H = 1, DPR = 1;
+  var openPanel = 'none';
+  var locked = false;
+  var showGrid = true;
+  var showAxis = true;
+  var selected = 'pelvis';
+  var undoStack = [];
+  var redoStack = [];
+  var saved = loadJson('pose3d_saved_v2', {});
+  var animKeys = loadJson('pose3d_anim_v2', []);
+  var activeKey = 0;
+  var playing = false;
+  var playStart = 0;
+  var lastPlayKey = -1;
+  var lineWidth = 6;
+  var headSize = 32;
+  var perspectiveOn = true;
+  var dotsOn = true;
+  var xGridOn = false;
+  var zGridOn = false;
+  var cleanCaptureMode = false;
+  var monochromeLimbs = false;
+  var showBodyControls = false;
+
+  var camera = { yaw: -35, pitch: 14, dist: 7.2, target: [0,1.25,0] };
+  var root = { pos: [0,0,0], rot: [0,0,0] };
+
+  var joints = [
+    {id:'pelvis', name:'Pelvis', parent:null, offset:[0,0.95,0], rot:[0,0,0]},
+    {id:'spine', name:'Spine', parent:'pelvis', offset:[0,0.55,0], rot:[0,0,0]},
+    {id:'chest', name:'Chest', parent:'spine', offset:[0,0.45,0], rot:[0,0,0]},
+    {id:'neck', name:'Neck', parent:'chest', offset:[0,0.32,0], rot:[0,0,0]},
+    {id:'head', name:'Head', parent:'neck', offset:[0,0.28,0], rot:[0,0,0]},
+    {id:'lShoulder', name:'Left Shoulder', parent:'chest', offset:[-0.42,0.18,0], rot:[0,0,-18]},
+    {id:'lElbow', name:'Left Elbow', parent:'lShoulder', offset:[-0.52,-0.30,0], rot:[0,0,-12]},
+    {id:'lHand', name:'Left Hand', parent:'lElbow', offset:[-0.44,-0.28,0], rot:[0,0,0]},
+    {id:'rShoulder', name:'Right Shoulder', parent:'chest', offset:[0.42,0.18,0], rot:[0,0,18]},
+    {id:'rElbow', name:'Right Elbow', parent:'rShoulder', offset:[0.52,-0.30,0], rot:[0,0,12]},
+    {id:'rHand', name:'Right Hand', parent:'rElbow', offset:[0.44,-0.28,0], rot:[0,0,0]},
+    {id:'lHip', name:'Left Hip', parent:'pelvis', offset:[-0.27,-0.08,0], rot:[0,0,-3]},
+    {id:'lKnee', name:'Left Knee', parent:'lHip', offset:[-0.13,-0.70,0], rot:[0,0,4]},
+    {id:'lFoot', name:'Left Foot', parent:'lKnee', offset:[-0.04,-0.66,0.10], rot:[8,0,0]},
+    {id:'rHip', name:'Right Hip', parent:'pelvis', offset:[0.27,-0.08,0], rot:[0,0,3]},
+    {id:'rKnee', name:'Right Knee', parent:'rHip', offset:[0.13,-0.70,0], rot:[0,0,-4]},
+    {id:'rFoot', name:'Right Foot', parent:'rKnee', offset:[0.04,-0.66,0.10], rot:[8,0,0]}
+  ];
+  var bonePairs = [
+    ['pelvis','spine'],['spine','chest'],['chest','neck'],['neck','head'],
+    ['chest','lShoulder'],['lShoulder','lElbow'],['lElbow','lHand'],
+    ['chest','rShoulder'],['rShoulder','rElbow'],['rElbow','rHand'],
+    ['pelvis','lHip'],['lHip','lKnee'],['lKnee','lFoot'],
+    ['pelvis','rHip'],['rHip','rKnee'],['rKnee','rFoot']
+  ];
+  var byId = {};
+  joints.forEach(function(j){ byId[j.id] = j; });
+  var screenJoints = {};
+
+  function resize(){
+    DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    draw();
+  }
+
+  function degToRad(v){ return v * Math.PI / 180; }
+  function vAdd(a,b){ return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function vSub(a,b){ return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+  function vScale(a,s){ return [a[0]*s, a[1]*s, a[2]*s]; }
+  function vDot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function vCross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function vLen(a){ return Math.sqrt(vDot(a,a)); }
+  function vNorm(a){ var l = vLen(a) || 1; return [a[0]/l,a[1]/l,a[2]/l]; }
+
+  function matMul(A,B){
+    var R = [[0,0,0],[0,0,0],[0,0,0]];
+    for(var r=0;r<3;r++) for(var c=0;c<3;c++) R[r][c] = A[r][0]*B[0][c]+A[r][1]*B[1][c]+A[r][2]*B[2][c];
+    return R;
+  }
+  function matVec(M,v){ return [M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2], M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2], M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]]; }
+  function rotMat(rx,ry,rz){
+    var x=degToRad(rx), y=degToRad(ry), z=degToRad(rz);
+    var cx=Math.cos(x), sx=Math.sin(x), cy=Math.cos(y), sy=Math.sin(y), cz=Math.cos(z), sz=Math.sin(z);
+    var RX=[[1,0,0],[0,cx,-sx],[0,sx,cx]];
+    var RY=[[cy,0,sy],[0,1,0],[-sy,0,cy]];
+    var RZ=[[cz,-sz,0],[sz,cz,0],[0,0,1]];
+    return matMul(matMul(RZ,RY),RX);
+  }
+
+  function computePose(){
+    var out = {};
+    var rootRot = rotMat(root.rot[0], root.rot[1], root.rot[2]);
+    joints.forEach(function(j){
+      var local = rotMat(j.rot[0], j.rot[1], j.rot[2]);
+      if(!j.parent){
+        out[j.id] = { pos: vAdd(root.pos, matVec(rootRot, j.offset)), rot: matMul(rootRot, local) };
+      } else {
+        var p = out[j.parent];
+        out[j.id] = { pos: vAdd(p.pos, matVec(p.rot, j.offset)), rot: matMul(p.rot, local) };
+      }
+    });
+    return out;
+  }
+
+  function cameraBasis(){
+    var yaw = degToRad(camera.yaw), pitch = degToRad(camera.pitch);
+    var cp = Math.cos(pitch), sp = Math.sin(pitch);
+    var pos = [camera.target[0] + camera.dist * Math.sin(yaw) * cp, camera.target[1] + camera.dist * sp, camera.target[2] + camera.dist * Math.cos(yaw) * cp];
+    var forward = vNorm(vSub(camera.target, pos));
+    var right = vNorm(vCross(forward, [0,1,0]));
+    var up = vNorm(vCross(right, forward));
+    return { pos: pos, forward: forward, right: right, up: up };
+  }
+
+  function viewportForPose(){
+    var frame = document.querySelector('.viewportFrame');
+    var r = frame ? frame.getBoundingClientRect() : {left:0, top:70, width:W, height:H-285};
+
+    // The side camera/tool buttons sit on top of the viewport like the real app.
+    // Reserve a narrow visual gutter for them so the stick figure itself does not sit
+    // underneath the buttons on phones.
+    var isPhone = W <= 520;
+    var sidePad = isPhone ? 56 : 64;
+    var usableWidth = Math.max(160, r.width - sidePad * 2);
+    var usableHeight = Math.max(160, r.height - (isPhone ? 6 : 0));
+
+    return {
+      left: r.left,
+      top: r.top,
+      width: r.width,
+      height: r.height,
+      innerLeft: r.left + sidePad,
+      innerRight: r.left + r.width - sidePad,
+      cx: r.left + sidePad + usableWidth / 2,
+      cy: r.top + usableHeight * (isPhone ? 0.54 : 0.56),
+      size: Math.max(180, Math.min(usableWidth, usableHeight) * (isPhone ? 1.02 : 0.96))
+    };
+  }
+
+  function project(p){
+    var b = cameraBasis();
+    var rel = vSub(p, b.pos);
+    var x = vDot(rel, b.right);
+    var y = vDot(rel, b.up);
+    var z = vDot(rel, b.forward);
+    var vp = viewportForPose();
+    var f = vp.size * 0.88;
+    var s = perspectiveOn ? f / Math.max(0.2, z) : f / Math.max(2.8, camera.dist);
+    return { x: vp.cx + x*s, y: vp.cy - y*s, z: z, scale: s };
+  }
+
+  function line3(a,b,color,w){
+    var pa = project(a), pb = project(b);
+    if(pa.z <= 0 || pb.z <= 0) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.stroke();
+  }
+
+  function drawGrid(){
+    if(cleanCaptureMode){
+      for(var i=-5;i<=5;i++){
+        line3([-5,0,i],[5,0,i], i===0 ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.12)', 1);
+        line3([i,0,-5],[i,0,5], i===0 ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.12)', 1);
+      }
+      return;
+    }
+    if(!showGrid && !xGridOn && !zGridOn) return;
+    ctx.lineWidth = 1;
+    if(showGrid){
+      for(var i=-5;i<=5;i++){
+        line3([-5,0,i],[5,0,i], i===0 ? 'rgba(40,170,80,0.42)' : 'rgba(0,0,0,0.14)', 1);
+        line3([i,0,-5],[i,0,5], i===0 ? 'rgba(40,170,80,0.42)' : 'rgba(0,0,0,0.14)', 1);
+      }
+    }
+    if(xGridOn){
+      for(var y=0;y<=4;y+=0.5) line3([0,y,-5],[0,y,5], 'rgba(239,47,63,0.18)', 1);
+      for(var z=-5;z<=5;z+=0.5) line3([0,0,z],[0,4,z], 'rgba(239,47,63,0.18)', 1);
+    }
+    if(zGridOn){
+      for(var y2=0;y2<=4;y2+=0.5) line3([-5,y2,0],[5,y2,0], 'rgba(38,73,232,0.18)', 1);
+      for(var x=-5;x<=5;x+=0.5) line3([x,0,0],[x,4,0], 'rgba(38,73,232,0.18)', 1);
+    }
+  }
+
+  function drawAxis(){
+    if(cleanCaptureMode || !showAxis) return;
+    line3([0,0,0],[1.4,0,0], '#d03b3b', 3);
+    line3([0,0,0],[0,1.4,0], '#2e9d52', 3);
+    line3([0,0,0],[0,0,1.4], '#3267d6', 3);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,W,H);
+
+    drawGrid();
+    drawAxis();
+    var pose = computePose();
+    var drawItems = [];
+    bonePairs.forEach(function(pair){
+      var a=pose[pair[0]].pos, b=pose[pair[1]].pos;
+      drawItems.push({type:'bone', z:(project(a).z+project(b).z)/2, a:a, b:b, pair:pair});
+    });
+    joints.forEach(function(j){
+      var p = pose[j.id].pos;
+      drawItems.push({type:'joint', z:project(p).z, p:p, joint:j});
+    });
+    drawItems.sort(function(a,b){ return b.z - a.z; });
+    screenJoints = {};
+    drawItems.forEach(function(it){
+      if(it.type === 'bone'){
+        var aId = it.pair[0], bId = it.pair[1];
+        var c = '#222222';
+        if(!cleanCaptureMode && !monochromeLimbs){
+          if(aId.indexOf('l') === 0 || bId.indexOf('l') === 0) c = varColor('--red');
+          if(aId.indexOf('r') === 0 || bId.indexOf('r') === 0) c = varColor('--blue');
+          if(['pelvis','spine','chest','neck','head'].indexOf(aId) >= 0 && ['pelvis','spine','chest','neck','head'].indexOf(bId) >= 0) c = 'rgba(200,149,61,0.92)';
+        }
+        line3(it.a, it.b, c, clamp(lineWidth * ((project(it.a).scale + project(it.b).scale) / 2) / 48, 2.2, lineWidth + 2));
+      } else {
+        if((cleanCaptureMode || !dotsOn) && it.joint.id !== 'head') return;
+        var sp = project(it.p);
+        if(it.joint.id === 'head'){
+          // Keep the head attached to the model. It now scales with camera zoom instead
+          // of staying the same pixel size while the rest of the body gets smaller.
+          var headR = clamp((headSize / 125) * sp.scale, 6, 50);
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, headR, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,255,255,0.96)';
+          ctx.fill();
+          ctx.lineWidth = clamp(headR * 0.13, 2.5, 5.5);
+          ctx.strokeStyle = '#111';
+          ctx.stroke();
+          screenJoints[it.joint.id] = {x:sp.x,y:sp.y,r:headR+8,z:sp.z};
+          return;
+        }
+        var baseR = clamp(0.17 * sp.scale, 5.5, 14);
+        var r = it.joint.id === selected ? baseR + 2.5 : baseR;
+        screenJoints[it.joint.id] = {x:sp.x,y:sp.y,r:r+9,z:sp.z};
+        var stroke = '#222';
+        if(!monochromeLimbs){
+          if(it.joint.id.indexOf('l') === 0) stroke = varColor('--red');
+          if(it.joint.id.indexOf('r') === 0) stroke = varColor('--blue');
+          if(['pelvis','spine','chest','neck'].indexOf(it.joint.id) >= 0) stroke = 'rgba(158,105,30,0.96)';
+        }
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, r, 0, Math.PI*2);
+        ctx.fillStyle = it.joint.id === selected ? (monochromeLimbs ? 'rgba(0,0,0,0.10)' : 'rgba(255,204,78,0.56)') : 'rgba(255,255,255,0.38)';
+        ctx.fill();
+        ctx.lineWidth = it.joint.id === selected ? 4 : 3;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    });
+    if(!cleanCaptureMode) drawCornerCube();
+    updateReadout();
+  }
+
+  function drawCornerCube(){
+    var vp = viewportForPose();
+    var isPhone = W <= 520;
+    var size = isPhone ? 40 : 46;
+    var cx = vp.left + (isPhone ? 30 : 36);
+    var cy = vp.top + (isPhone ? 26 : 30);
+    var b = cameraBasis();
+    function cproj(v){
+      return {
+        x: cx + vDot(v, b.right) * size * 0.48,
+        y: cy - vDot(v, b.up) * size * 0.48,
+        z: vDot(v, b.forward)
+      };
+    }
+    var V = [
+      [-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],
+      [-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]
+    ];
+    var P = V.map(cproj);
+    var faces = [
+      {idx:[0,1,2,3], label:'ZB', color:'rgba(50,103,214,0.11)'},
+      {idx:[4,5,6,7], label:'ZF', color:'rgba(50,103,214,0.16)'},
+      {idx:[0,4,7,3], label:'XL', color:'rgba(239,47,63,0.10)'},
+      {idx:[1,5,6,2], label:'XR', color:'rgba(239,47,63,0.16)'},
+      {idx:[0,1,5,4], label:'YB', color:'rgba(31,181,91,0.10)'},
+      {idx:[3,2,6,7], label:'YT', color:'rgba(31,181,91,0.17)'}
+    ];
+    faces.forEach(function(f){ f.depth = f.idx.reduce(function(a,i){ return a + P[i].z; },0)/4; });
+    faces.sort(function(a,b){ return a.depth - b.depth; });
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.font = 'bold ' + (isPhone ? 10 : 11) + 'px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    faces.forEach(function(f){
+      ctx.beginPath();
+      f.idx.forEach(function(i,n){ var p=P[i]; if(n===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y); });
+      ctx.closePath();
+      ctx.fillStyle = f.color;
+      ctx.strokeStyle = 'rgba(80,80,80,0.52)';
+      ctx.fill(); ctx.stroke();
+      if(f.depth > 0.12){
+        var tx=0, ty=0;
+        f.idx.forEach(function(i){ tx += P[i].x; ty += P[i].y; });
+        tx/=4; ty/=4;
+        ctx.fillStyle = f.label[0] === 'X' ? 'rgba(239,47,63,0.78)' : (f.label[0] === 'Y' ? 'rgba(31,181,91,0.78)' : 'rgba(38,73,232,0.70)');
+        ctx.fillText(f.label, tx, ty);
+      }
+    });
+    ctx.restore();
+  }
+
+  function updateReadout(){
+    var el = document.getElementById('readout');
+    if(!el) return;
+    el.innerHTML = 'Yaw ' + camera.yaw.toFixed(1) + '° &nbsp; Pitch ' + camera.pitch.toFixed(1) + '° &nbsp; Roll ' + root.rot[2].toFixed(1) + '° &nbsp; O.scale ' + (camera.dist*29).toFixed(1);
+  }
+
+  function varColor(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  function currentPose(){
+    return {
+      root: { pos: root.pos.slice(), rot: root.rot.slice() },
+      joints: joints.map(function(j){ return {id:j.id, rot:j.rot.slice()}; })
+    };
+  }
+
+  function vectorFromAny(v, fallback){
+    fallback = fallback || [0,0,0];
+    if(Array.isArray(v)) return [Number(v[0]) || 0, Number(v[1]) || 0, Number(v[2]) || 0];
+    if(v && typeof v === 'object') return [Number(v.x) || 0, Number(v.y) || 0, Number(v.z) || 0];
+    return fallback.slice();
+  }
+
+  function normalizeImportedPose(data){
+    if(!data) return null;
+
+    if(data.type === 'pose3d-llm-context' && data.currentPose){
+      data = data.currentPose;
+    }
+    if(data.type === 'pose3d-pose' && data.pose){
+      data = data.pose;
+    }
+    if(data.pose && data.pose.root && data.pose.joints){
+      data = data.pose;
+    }
+
+    var out = currentPose();
+    if(data.root){
+      out.root.pos = vectorFromAny(data.root.pos, out.root.pos);
+      out.root.rot = vectorFromAny(data.root.rot || data.root.rotDegrees, out.root.rot);
+    }
+
+    if(data.joints){
+      if(Array.isArray(data.joints)){
+        data.joints.forEach(function(x){
+          if(!x || !x.id || !byId[x.id]) return;
+          var target = out.joints.find(function(j){ return j.id === x.id; });
+          if(target) target.rot = vectorFromAny(x.rot || x.rotDegrees, target.rot);
+        });
+      } else if(typeof data.joints === 'object'){
+        Object.keys(data.joints).forEach(function(id){
+          if(!byId[id]) return;
+          var src = data.joints[id] || {};
+          var target = out.joints.find(function(j){ return j.id === id; });
+          if(target) target.rot = vectorFromAny(src.rot || src.rotDegrees, target.rot);
+        });
+      }
+    }
+
+    return out;
+  }
+
+  function normalizeImportedAnimation(data){
+    if(!data) return null;
+    var frames = null;
+    if(data.type === 'pose3d-animation-compact' && Array.isArray(data.frames)){
+      frames = data.frames.map(compactFrameToPose);
+    } else if(data.type === 'pose3d-animation' && Array.isArray(data.frames)){
+      frames = data.frames;
+    } else if(data.type === 'pose3d-llm-context' && data.animation && Array.isArray(data.animation.frames)){
+      frames = data.animation.frames.map(function(f){ return f && f.pose ? f.pose : f; });
+    }
+    if(!frames) return null;
+    var normalized = frames.map(normalizeImportedPose).filter(Boolean);
+    return normalized.length ? normalized : null;
+  }
+
+  function applyPose(p, skipControlRefresh){
+    p = normalizeImportedPose(p);
+    if(!p) return;
+    if(p.root){
+      root.pos = vectorFromAny(p.root.pos, root.pos);
+      root.rot = vectorFromAny(p.root.rot, root.rot);
+    }
+    if(p.joints){
+      p.joints.forEach(function(x){
+        if(byId[x.id]) byId[x.id].rot = vectorFromAny(x.rot, byId[x.id].rot);
+      });
+    }
+
+    // During playback this function runs every animation tick. Rebuilding all of the
+    // sliders every tick can make mobile browsers look like the Play button did
+    // nothing because the UI work eats the frame budget. Only rebuild controls for
+    // normal edits/imports, not for playback interpolation.
+    if(!skipControlRefresh) refreshControls();
+    draw();
+  }
+  function pushUndo(){ undoStack.push(JSON.stringify(currentPose())); if(undoStack.length > 80) undoStack.shift(); redoStack = []; }
+  function undo(){ if(!undoStack.length) return; redoStack.push(JSON.stringify(currentPose())); applyPose(JSON.parse(undoStack.pop())); }
+  function redo(){ if(!redoStack.length) return; undoStack.push(JSON.stringify(currentPose())); applyPose(JSON.parse(redoStack.pop())); }
+  function resetPose(){ pushUndo(); root = {pos:[0,0,0], rot:[0,0,0]}; joints.forEach(function(j){ j.rot = [0,0,0]; }); selectJoint('pelvis'); refreshControls(); draw(); }
+
+  function buildControls(){
+    var jointSelect = document.getElementById('jointSelect');
+    jointSelect.innerHTML = '';
+    joints.forEach(function(j){
+      var opt = document.createElement('option'); opt.value = j.id; opt.textContent = j.name; jointSelect.appendChild(opt);
+    });
+    jointSelect.value = selected;
+
+    var jointWrap = document.getElementById('jointControls');
+    var body = document.getElementById('bodyControls');
+
+    // The old UI was confusing because turning on body movement added the body
+    // sliders below the normal joint-rotation sliders. On a phone it looked like
+    // the Move/Rotate button did nothing, because the first visible sliders still
+    // rotated the selected part. In body mode, hide joint sliders entirely.
+    if(showBodyControls){
+      if(jointWrap) jointWrap.style.display = 'none';
+      body.innerHTML = '';
+      body.style.display = 'block';
+      [['Move X',root.pos,0,-5,5,0.01],['Move Y',root.pos,1,-2,5,0.01],['Move Z',root.pos,2,-5,5,0.01],['Turn X',root.rot,0,-180,180,1],['Turn Y',root.rot,1,-180,180,1],['Turn Z',root.rot,2,-180,180,1]].forEach(function(spec){
+        body.appendChild(makeSlider(spec[0], spec[1], spec[2], spec[3], spec[4], spec[5], draw, 'bodyrow'));
+      });
+    } else {
+      if(jointWrap) jointWrap.style.display = 'block';
+      if(body){ body.innerHTML = ''; body.style.display = 'none'; }
+      buildJointSliders();
+    }
+  }
+  function buildJointSliders(){
+    var wrap = document.getElementById('jointControls');
+    wrap.innerHTML = '';
+    var j = byId[selected];
+    [['X ' + Math.round(j.rot[0]) + '°',0,'xrow'],['Y ' + Math.round(j.rot[1]) + '°',1,'yrow'],['Z ' + Math.round(j.rot[2]) + '°',2,'zrow']].forEach(function(spec){
+      wrap.appendChild(makeSlider(spec[0], j.rot, spec[1], -180, 180, 1, draw, spec[2]));
+    });
+  }
+  function makeSlider(label, arr, idx, min, max, step, cb, cls){
+    var row = document.createElement('div'); row.className = 'row ' + (cls || '');
+    var lab = document.createElement('label'); lab.textContent = label;
+    var minus = document.createElement('button'); minus.textContent = '−';
+    var plus = document.createElement('button'); plus.textContent = '+';
+    var input = document.createElement('input'); input.type = 'range'; input.min = min; input.max = max; input.step = step; input.value = arr[idx];
+    var sliderWasPushed = false;
+    var axisPrefix = (/^[XYZ] /.test(label)) ? label.charAt(0) : '';
+    var labelBase = label;
+
+    function updateLabel(){
+      if(axisPrefix){
+        lab.textContent = axisPrefix + ' ' + Math.round(arr[idx]) + '°';
+      } else if(labelBase.indexOf('Move ') === 0){
+        lab.textContent = labelBase + ' ' + Number(arr[idx]).toFixed(2);
+      } else if(labelBase.indexOf('Turn ') === 0){
+        lab.textContent = labelBase + ' ' + Math.round(arr[idx]) + '°';
+      }
+    }
+    updateLabel();
+    function setVal(v){
+      arr[idx] = Math.max(parseFloat(min), Math.min(parseFloat(max), v));
+      input.value = arr[idx];
+      updateLabel();
+      cb();
+    }
+    function setFromClientX(clientX){
+      var rect = input.getBoundingClientRect();
+      var pct = (clientX - rect.left) / Math.max(1, rect.width);
+      var raw = parseFloat(min) + Math.max(0, Math.min(1, pct)) * (parseFloat(max) - parseFloat(min));
+      var st = parseFloat(step) || 1;
+      var snapped = Math.round(raw / st) * st;
+      setVal(snapped);
+    }
+    minus.addEventListener('click', function(e){ e.stopPropagation(); pushUndo(); setVal(parseFloat(input.value) - parseFloat(step)*8); });
+    plus.addEventListener('click', function(e){ e.stopPropagation(); pushUndo(); setVal(parseFloat(input.value) + parseFloat(step)*8); });
+
+    input.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(!sliderWasPushed){ pushUndo(); sliderWasPushed = true; }
+      try { input.setPointerCapture(e.pointerId); } catch(err) {}
+      var p = document.getElementById('posePanel'); if(p) p.classList.add('adjusting');
+      setFromClientX(e.clientX);
+    });
+    input.addEventListener('pointermove', function(e){
+      if(e.buttons !== 1 && e.pointerType !== 'touch') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setFromClientX(e.clientX);
+    });
+    function endSlide(e){
+      if(e){ e.stopPropagation(); }
+      sliderWasPushed = false;
+      var p = document.getElementById('posePanel'); if(p) p.classList.remove('adjusting');
+    }
+    input.addEventListener('pointerup', endSlide);
+    input.addEventListener('pointercancel', endSlide);
+    input.addEventListener('lostpointercapture', endSlide);
+    input.addEventListener('input', function(e){
+      e.stopPropagation();
+      arr[idx] = parseFloat(input.value);
+      updateLabel();
+      cb();
+    });
+    row.appendChild(lab); row.appendChild(minus); row.appendChild(input); row.appendChild(plus); return row;
+  }
+
+  function refreshControls(){
+    document.getElementById('jointSelect').value = selected;
+    var sl = document.getElementById('selectedLabel');
+    if(sl) sl.textContent = showBodyControls ? '[Body] : Position / Turn' : '[Part] : ' + byId[selected].name;
+    var mb = document.getElementById('modeBtn');
+    if(mb) mb.textContent = showBodyControls ? 'Part Rotate' : 'Body Move';
+    buildControls();
+    var st = document.getElementById('status'); if(st) st.innerHTML = showBodyControls ? 'Selected: <b>Body position / turn</b>' : 'Selected: <b>' + byId[selected].name + '</b>';
+  }
+  function selectJoint(id){ selected = id; refreshControls(); draw(); }
+
+  function setPanel(which){
+    openPanel = which;
+    var tools = document.getElementById('toolsPanel');
+    if(tools){
+      tools.classList.toggle('open', which === 'tools');
+      tools.style.display = (which === 'tools') ? 'block' : 'none';
+    }
+    var dock = document.getElementById('posePanel');
+    if(dock) dock.style.display = (which === 'none') ? 'none' : 'block';
+    var tb = document.getElementById('toolsBtn'); if(tb) tb.classList.toggle('active', which === 'tools');
+    setTimeout(draw, 0);
+    draw();
+  }
+
+  var toastTimer = null;
+  function showToast(message){
+    var t = document.getElementById('toast');
+    if(!t) return;
+    t.textContent = message;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1500);
+  }
+
+  function openLoadDialog(){
+    var dialog = document.getElementById('loadDialog');
+    var body = document.getElementById('loadDialogBody');
+    if(!dialog || !body) return;
+    body.innerHTML = '';
+    var names = Object.keys(saved).sort();
+    if(!names.length){
+      var empty = document.createElement('div');
+      empty.textContent = 'No saved poses yet. Tap SAVE first.';
+      empty.style.fontWeight = '800';
+      empty.style.padding = '8px 0';
+      body.appendChild(empty);
+    } else {
+      names.forEach(function(name){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'savedPoseBtn';
+        b.innerHTML = '<span></span><small>Load</small>';
+        b.querySelector('span').textContent = name;
+        b.onclick = function(){
+          if(saved[name]){
+            pushUndo();
+            applyPose(saved[name]);
+            document.getElementById('poseName').value = name;
+            dialog.classList.remove('open');
+            dialog.setAttribute('aria-hidden', 'true');
+            showToast('Loaded "' + name + '"');
+          }
+        };
+        body.appendChild(b);
+      });
+    }
+    dialog.classList.add('open');
+    dialog.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeLoadDialog(){
+    var dialog = document.getElementById('loadDialog');
+    if(dialog){
+      dialog.classList.remove('open');
+      dialog.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  // Do not let touches on the UI controls fall through into the pose viewport.
+  document.querySelectorAll('button,input,select,.bottomDock,.settingsPanel,.sideTools,.appTop,.dialogShade,.poseDialog').forEach(function(el){
+    ['pointerdown','pointermove','touchstart','touchmove'].forEach(function(type){
+      el.addEventListener(type, function(ev){ ev.stopPropagation(); }, {passive:false});
+    });
+  });
+
+  var pointer = null;
+  var pinch = null;
+  canvas.addEventListener('pointerdown', function(e){
+    canvas.setPointerCapture(e.pointerId);
+    pointer = {id:e.pointerId, x:e.clientX, y:e.clientY, startX:e.clientX, startY:e.clientY, time:Date.now()};
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if(locked || !pointer || pointer.id !== e.pointerId) return;
+    var dx = e.clientX - pointer.x, dy = e.clientY - pointer.y;
+    camera.yaw -= dx * 0.35;
+    camera.pitch = Math.max(-82, Math.min(82, camera.pitch + dy * 0.25));
+    pointer.x = e.clientX; pointer.y = e.clientY;
+    draw();
+  });
+  canvas.addEventListener('pointerup', function(e){
+    if(!pointer || pointer.id !== e.pointerId) return;
+    var dx = e.clientX - pointer.startX, dy = e.clientY - pointer.startY;
+    if(Math.abs(dx) < 8 && Math.abs(dy) < 8 && Date.now() - pointer.time < 450){
+      var hit = pick(e.clientX, e.clientY);
+      if(hit){ selectJoint(hit); setPanel('pose'); }
+    }
+    pointer = null;
+  });
+  canvas.addEventListener('wheel', function(e){
+    e.preventDefault();
+    camera.dist = Math.max(2.2, Math.min(16, camera.dist + e.deltaY * 0.005));
+    draw();
+  }, {passive:false});
+  canvas.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ pinch = touchDist(e); } }, {passive:false});
+  canvas.addEventListener('touchmove', function(e){
+    if(e.touches.length === 2 && pinch){
+      e.preventDefault();
+      var d = touchDist(e);
+      camera.dist = Math.max(2.2, Math.min(16, camera.dist * (pinch / Math.max(1,d))));
+      pinch = d;
+      draw();
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchend', function(){ pinch = null; }, {passive:false});
+  function touchDist(e){ var a=e.touches[0], b=e.touches[1]; var dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.sqrt(dx*dx+dy*dy); }
+  function pick(x,y){
+    var best = null, bd = 999999;
+    Object.keys(screenJoints).forEach(function(id){
+      var s = screenJoints[id]; var dx=x-s.x, dy=y-s.y; var d=dx*dx+dy*dy;
+      if(d < s.r*s.r && d < bd){ best = id; bd = d; }
+    });
+    return best;
+  }
+
+  function setView(v){
+    if(v === 'top'){ camera.yaw = 0; camera.pitch = 89; }
+    if(v === 'bottom'){ camera.yaw = 0; camera.pitch = -89; }
+    if(v === 'front'){ camera.yaw = 0; camera.pitch = 0; }
+    if(v === 'back'){ camera.yaw = 180; camera.pitch = 0; }
+    if(v === 'right'){ camera.yaw = 90; camera.pitch = 0; }
+    if(v === 'left'){ camera.yaw = -90; camera.pitch = 0; }
+    if(v === 'home'){ camera.yaw = -35; camera.pitch = 14; camera.dist = 7.2; camera.target = [0,1.25,0]; }
+    if(v === 'reset'){ setView('home'); root.pos=[0,0,0]; }
+    draw();
+  }
+
+  function flipLR(){ pushUndo(); root.rot[1] += 180; joints.forEach(function(j){ j.rot[1] *= -1; j.rot[2] *= -1; }); draw(); refreshControls(); }
+  function flipUD(){ pushUndo(); root.rot[0] += 180; joints.forEach(function(j){ j.rot[0] *= -1; j.rot[2] *= -1; }); draw(); refreshControls(); }
+
+  function saveJson(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+  function loadJson(k, fallback){ try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch(e){ return fallback; } }
+  function refreshSaved(){
+    var s = document.getElementById('savedList'); s.innerHTML = '';
+    var names = Object.keys(saved).sort();
+    if(!names.length){ var o=document.createElement('option'); o.textContent='No saved poses'; o.value=''; s.appendChild(o); return; }
+    names.forEach(function(n){ var o=document.createElement('option'); o.textContent=n; o.value=n; s.appendChild(o); });
+  }
+  function saveAnimKeys(){ saveJson('pose3d_anim_v2', animKeys); }
+  function frameLabel(i){ return String(i + 1); }
+  function setActiveKey(i, apply){
+    if(!animKeys.length){ activeKey = 0; refreshKeys(); return; }
+    activeKey = clamp(i, 0, animKeys.length - 1);
+    if(apply){ pushUndo(); applyPose(animKeys[activeKey]); }
+    refreshKeys();
+  }
+  function refreshKeys(){
+    var k = document.getElementById('keyList');
+    if(k) k.textContent = animKeys.length ? (animKeys.length + ' animation frames. Tap a frame to load it.') : 'No frames yet. Pose the figure, then tap Add.';
+    var t = document.getElementById('thumbs');
+    if(t){
+      t.innerHTML = '';
+      var count = Math.max(1, animKeys.length);
+      for(var i=0;i<count;i++){
+        var d=document.createElement('button');
+        d.type = 'button';
+        d.className='thumb' + (i===activeKey?' active':'') + (animKeys[i]?' hasPose':'') + (playing && i===lastPlayKey?' playing':'');
+        d.textContent = frameLabel(i);
+        (function(idx){ d.onclick = function(){ if(animKeys[idx]){ playing=false; setActiveKey(idx, true); } }; })(i);
+        t.appendChild(d);
+      }
+    }
+  }
+  function addFrame(){
+    stopAnimation();
+    animKeys.push(currentPose());
+    activeKey = animKeys.length - 1;
+    saveAnimKeys();
+    refreshKeys();
+    showToast('Added frame ' + frameLabel(activeKey));
+  }
+  function insertFrame(){
+    stopAnimation();
+    var at = animKeys.length ? activeKey + 1 : 0;
+    animKeys.splice(at, 0, currentPose());
+    activeKey = at;
+    saveAnimKeys();
+    refreshKeys();
+    showToast('Inserted frame ' + frameLabel(activeKey));
+  }
+  function overwriteFrame(){
+    stopAnimation();
+    if(!animKeys.length){ addFrame(); return; }
+    animKeys[activeKey] = currentPose();
+    saveAnimKeys();
+    refreshKeys();
+    showToast('Overwrote frame ' + frameLabel(activeKey));
+  }
+  function deleteFrame(){
+    stopAnimation();
+    if(!animKeys.length) return;
+    animKeys.splice(activeKey, 1);
+    activeKey = Math.max(0, Math.min(activeKey, animKeys.length - 1));
+    saveAnimKeys();
+    refreshKeys();
+    showToast(animKeys.length ? 'Deleted frame. Now on frame ' + frameLabel(activeKey) : 'Deleted last frame');
+  }
+  function interpPose(a,b,t){
+    a = normalizeImportedPose(a);
+    b = normalizeImportedPose(b);
+    var out = JSON.parse(JSON.stringify(a));
+    if(!a || !b) return out;
+
+    for(var i=0;i<3;i++){
+      out.root.pos[i] = (a.root.pos[i] || 0) + ((b.root.pos[i] || 0) - (a.root.pos[i] || 0)) * t;
+      out.root.rot[i] = (a.root.rot[i] || 0) + ((b.root.rot[i] || 0) - (a.root.rot[i] || 0)) * t;
+    }
+
+    // Interpolate by joint id, not by array index. This keeps playback working even
+    // when imported JSON has joints in a different order or only includes some joints.
+    var bJoints = {};
+    (b.joints || []).forEach(function(j){ bJoints[j.id] = j; });
+    out.joints.forEach(function(j){
+      var bj = bJoints[j.id];
+      if(!bj) return;
+      for(var i=0;i<3;i++){
+        j.rot[i] = (j.rot[i] || 0) + (((bj.rot || [0,0,0])[i] || 0) - (j.rot[i] || 0)) * t;
+      }
+    });
+    return out;
+  }
+
+  function roundNum(v, places){
+    var p = Math.pow(10, places || 3);
+    return Math.round(v * p) / p;
+  }
+  function clonePoseData(p){
+    return JSON.parse(JSON.stringify(p));
+  }
+  function namedPose(p){
+    var out = {
+      root: {
+        pos: {x: roundNum(p.root.pos[0],3), y: roundNum(p.root.pos[1],3), z: roundNum(p.root.pos[2],3)},
+        rotDegrees: {x: roundNum(p.root.rot[0],1), y: roundNum(p.root.rot[1],1), z: roundNum(p.root.rot[2],1)}
+      },
+      joints: {}
+    };
+    if(p.joints){
+      p.joints.forEach(function(j){
+        var meta = byId[j.id];
+        out.joints[j.id] = {
+          name: meta ? meta.name : j.id,
+          rotDegrees: {x: roundNum(j.rot[0],1), y: roundNum(j.rot[1],1), z: roundNum(j.rot[2],1)}
+        };
+      });
+    }
+    return out;
+  }
+  function worldDataForPose(p){
+    var oldRoot = {pos: root.pos.slice(), rot: root.rot.slice()};
+    var oldJoints = joints.map(function(j){ return {id:j.id, rot:j.rot.slice()}; });
+    if(p.root){ root.pos = p.root.pos.slice(); root.rot = p.root.rot.slice(); }
+    if(p.joints){ p.joints.forEach(function(x){ if(byId[x.id]) byId[x.id].rot = x.rot.slice(); }); }
+    var computed = computePose();
+    var out = {};
+    joints.forEach(function(j){
+      var w = computed[j.id];
+      out[j.id] = {
+        name: j.name,
+        pos: {x: roundNum(w.pos[0],3), y: roundNum(w.pos[1],3), z: roundNum(w.pos[2],3)},
+        parent: j.parent || null
+      };
+    });
+    root.pos = oldRoot.pos; root.rot = oldRoot.rot;
+    oldJoints.forEach(function(j){ if(byId[j.id]) byId[j.id].rot = j.rot; });
+    return out;
+  }
+  function nonZeroJointLines(p, maxLines){
+    var lines = [];
+    (p.joints || []).forEach(function(j){
+      var r = j.rot || [0,0,0];
+      var changed = Math.abs(r[0]) + Math.abs(r[1]) + Math.abs(r[2]);
+      if(changed >= 4){
+        var meta = byId[j.id];
+        lines.push('- ' + (meta ? meta.name : j.id) + ': X ' + roundNum(r[0],1) + '°, Y ' + roundNum(r[1],1) + '°, Z ' + roundNum(r[2],1) + '°');
+      }
+    });
+    if(!lines.length) lines.push('- All joint rotations are close to neutral.');
+    if(maxLines && lines.length > maxLines){
+      return lines.slice(0, maxLines).concat(['- ... plus ' + (lines.length - maxLines) + ' more adjusted parts in the JSON.']);
+    }
+    return lines;
+  }
+  function keyPointLines(world, maxLines){
+    var ids = ['head','neck','chest','pelvis','lShoulder','lElbow','lHand','rShoulder','rElbow','rHand','lHip','lKnee','lFoot','rHip','rKnee','rFoot'];
+    var lines = [];
+    ids.forEach(function(id){
+      if(world[id]) lines.push('- ' + world[id].name + ': x ' + world[id].pos.x + ', y ' + world[id].pos.y + ', z ' + world[id].pos.z);
+    });
+    if(maxLines && lines.length > maxLines) return lines.slice(0, maxLines).concat(['- ... remaining points are in the JSON.']);
+    return lines;
+  }
+  function defaultPoseForPrompt(){
+    return {
+      root: { pos: [0,0,0], rot: [0,0,0] },
+      joints: joints.map(function(j){ return {id:j.id, rot:[0,0,0]}; })
+    };
+  }
+
+  var compactJointIds = {
+    p:'pelvis', s:'spine', c:'chest', n:'neck', h:'head',
+    ls:'lShoulder', le:'lElbow', lh:'lHand',
+    rs:'rShoulder', re:'rElbow', rh:'rHand',
+    lhp:'lHip', lk:'lKnee', lf:'lFoot',
+    rhp:'rHip', rk:'rKnee', rf:'rFoot'
+  };
+  var fullToCompactJointIds = {};
+  Object.keys(compactJointIds).forEach(function(k){ fullToCompactJointIds[compactJointIds[k]] = k; });
+
+  function compactRotArray(rot){
+    return [roundNum(rot[0] || 0,1), roundNum(rot[1] || 0,1), roundNum(rot[2] || 0,1)];
+  }
+  function isMeaningfulRot(rot){
+    return Math.abs(rot[0] || 0) + Math.abs(rot[1] || 0) + Math.abs(rot[2] || 0) >= 0.1;
+  }
+  function compactPoseDelta(p){
+    var out = {};
+    if(!p || !p.joints) return out;
+    p.joints.forEach(function(j){
+      var shortId = fullToCompactJointIds[j.id] || j.id;
+      var r = compactRotArray(j.rot || [0,0,0]);
+      if(isMeaningfulRot(r)) out[shortId] = r;
+    });
+    return out;
+  }
+  function compactRootDelta(p){
+    if(!p || !p.root) return null;
+    var pos = [roundNum(p.root.pos[0] || 0,3), roundNum(p.root.pos[1] || 0,3), roundNum(p.root.pos[2] || 0,3)];
+    var rot = compactRotArray(p.root.rot || [0,0,0]);
+    var hasPos = Math.abs(pos[0]) + Math.abs(pos[1]) + Math.abs(pos[2]) >= 0.001;
+    var hasRot = isMeaningfulRot(rot);
+    if(!hasPos && !hasRot) return null;
+    var out = {};
+    if(hasPos) out.p = pos;
+    if(hasRot) out.r = rot;
+    return out;
+  }
+  function promptAnimationFps(){
+    var input = document.getElementById('pbFps');
+    var value = input ? parseInt(input.value, 10) : NaN;
+    if(!isFinite(value)) value = parseInt(document.getElementById('fps').value,10) || 24;
+    return clamp(value, 1, 60);
+  }
+  function promptAnimationDuration(){
+    var input = document.getElementById('pbDuration');
+    var value = input ? parseFloat(input.value) : NaN;
+    if(!isFinite(value)) value = 3;
+    return clamp(value, 0.25, 60);
+  }
+  function promptAnimationFrameCount(){
+    return Math.max(1, Math.round(promptAnimationDuration() * promptAnimationFps()));
+  }
+  var LONG_ANIMATION_FILE_THRESHOLD = 50;
+  function isLongPromptAnimation(){
+    return promptAnimationFrameCount() >= LONG_ANIMATION_FILE_THRESHOLD;
+  }
+  function sanitizeJsonFileName(name){
+    name = String(name || '').trim();
+    if(!name) name = 'stick_figure_animation.json';
+    name = name.replace(/[\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+    if(!/\.json$/i.test(name)) name += '.json';
+    return name;
+  }
+  function promptJsonFileName(){
+    var input = document.getElementById('pbJsonFileName');
+    return sanitizeJsonFileName(input ? input.value : 'stick_figure_animation.json');
+  }
+  function isAnimationGoal(goal){
+    return goal === 'animation_new' || goal === 'animation_edit';
+  }
+  function syncPromptTimingVisibility(){
+    var goal = (document.getElementById('pbGoal') || {}).value || 'image';
+    var scope = (document.getElementById('pbScope') || {}).value || 'current';
+    var showTiming = isAnimationGoal(goal);
+    var block = document.getElementById('pbTimingBlock');
+    if(block) block.style.display = showTiming ? 'grid' : 'none';
+    var fileBlock = document.getElementById('pbJsonFileBlock');
+    if(fileBlock) fileBlock.style.display = (showTiming && isLongPromptAnimation()) ? 'grid' : 'none';
+    var cameraCheck = document.getElementById('pbCameraCheck');
+    if(cameraCheck) cameraCheck.style.display = scope === 'default' ? 'none' : 'flex';
+  }
+
+  function buildCompactAnimationJson(){
+    var goal = (document.getElementById('pbGoal') || {}).value || 'image';
+    var scope = (document.getElementById('pbScope') || {}).value || 'current';
+    var freshDefault = scope === 'default';
+    var fpsVal = promptAnimationFps();
+    var durationVal = promptAnimationDuration();
+    var frames = [];
+    var sourceFrames = (!freshDefault && (scope === 'animation' || scope === 'both') && animKeys.length) ? animKeys : [];
+
+    if(sourceFrames.length){
+      sourceFrames.forEach(function(p, idx){
+        var f = {i: idx + 1, t: roundNum((idx / Math.max(1, sourceFrames.length - 1)) * durationVal,3)};
+        var rootDelta = compactRootDelta(p);
+        var rotDelta = compactPoseDelta(p);
+        if(rootDelta) f.root = rootDelta;
+        f.r = rotDelta;
+        frames.push(f);
+      });
+    } else if(!freshDefault && goal === 'animation_edit'){
+      var rootDelta = compactRootDelta(currentPose());
+      var rotDelta = compactPoseDelta(currentPose());
+      var f = {i:1, t:0, note:'only current pose was available; add more animation frames if editing an existing motion'};
+      if(rootDelta) f.root = rootDelta;
+      f.r = rotDelta;
+      frames.push(f);
+    }
+
+    return {
+      type: 'pose3d-animation-compact',
+      version: 1,
+      fps: fpsVal,
+      durationSec: durationVal,
+      frameCount: Math.max(1, Math.round(durationVal * fpsVal)),
+      frameTiming: 'frames length should equal frameCount; frame i uses t = (i - 1) / fps seconds',
+      outputFileName: isLongPromptAnimation() ? promptJsonFileName() : null,
+      timeUnit: 'seconds',
+      base: freshDefault ? 'fresh-default-neutral-pose' : 'neutral-pose-plus-listed-frame-rotations',
+      rotationOrder: 'local XYZ degrees',
+      note: 'Sampled-frame animation format. Output one compact pose per rendered frame. Each frame lists only joints that are not neutral. Missing joints keep the neutral/default rotation for that frame. r maps compact joint ids to [x,y,z] degree rotations.',
+      jointMap: compactJointIds,
+      frames: frames.length ? frames : [
+        {i:1, t:0, r:{}},
+        {i:2, t:roundNum(durationVal / 2,3), r:{}},
+        {i:3, t:durationVal, r:{}}
+      ]
+    };
+  }
+  function compactFrameToPose(frame){
+    var p = defaultPoseForPrompt();
+    if(!frame) return p;
+
+    if(frame.pose) return normalizeImportedPose(frame.pose) || p;
+
+    if(frame.root){
+      if(frame.root.p || frame.root.pos) p.root.pos = vectorFromAny(frame.root.p || frame.root.pos, p.root.pos);
+      if(frame.root.r || frame.root.rot || frame.root.rotDegrees) p.root.rot = vectorFromAny(frame.root.r || frame.root.rot || frame.root.rotDegrees, p.root.rot);
+    }
+
+    // Preferred compact shape is frame.r, but LLMs sometimes rename it to joints,
+    // rotations, or rot. Accept those common variants so imported animations still play.
+    var rots = frame.r || frame.rotations || frame.rot || frame.joints || {};
+
+    if(Array.isArray(rots)){
+      rots.forEach(function(item){
+        if(!item) return;
+        var id = compactJointIds[item.id] || item.id;
+        var target = p.joints.find(function(j){ return j.id === id; });
+        if(target) target.rot = vectorFromAny(item.r || item.rot || item.rotDegrees, target.rot);
+      });
+      return p;
+    }
+
+    Object.keys(rots).forEach(function(shortId){
+      var id = compactJointIds[shortId] || shortId;
+      var target = p.joints.find(function(j){ return j.id === id; });
+      if(target) target.rot = vectorFromAny(rots[shortId], target.rot);
+    });
+    return p;
+  }
+
+  function buildLlmContext(){
+    var goal = (document.getElementById('pbGoal') || {}).value || 'image';
+    var scope = (document.getElementById('pbScope') || {}).value || 'current';
+
+    // Animation prompts are the case that can explode in size. Use the short schema
+    // by default so Copy JSON and the embedded prompt are small enough for LLM apps.
+    if(goal === 'animation_new' || goal === 'animation_edit'){
+      return buildCompactAnimationJson();
+    }
+
+    var includeWorld = !!(document.getElementById('pbIncludeWorld') && document.getElementById('pbIncludeWorld').checked);
+    var freshDefault = scope === 'default';
+    var animDurationVal = promptAnimationDuration();
+    var animFpsVal = promptAnimationFps();
+    var cur = freshDefault ? defaultPoseForPrompt() : currentPose();
+    var ctxObj = {
+      type: 'pose3d-llm-context',
+      version: 1,
+      sourceMode: freshDefault ? 'fresh-default-start-no-current-editor-data' : scope,
+      coordinateSystem: {
+        units: 'arbitrary model units',
+        axes: {x: 'character left/right', y: 'vertical height', z: 'depth forward/back'},
+        rotations: 'degrees around local X/Y/Z axes',
+        note: 'Use rotation data and world-space joint positions. World positions are easiest for understanding the silhouette.'
+      },
+      selectedPart: freshDefault ? null : selected,
+      poseName: freshDefault ? 'fresh_default_start' : (document.getElementById('poseName').value.trim() || 'untitled_pose'),
+      currentPose: namedPose(cur)
+    };
+    if(includeWorld) ctxObj.currentWorldJoints = worldDataForPose(cur);
+    if(!freshDefault && (scope === 'animation' || scope === 'both')){
+      ctxObj.animation = {
+        name: (document.getElementById('poseName').value.trim() || 'animation'),
+        fps: parseInt(document.getElementById('fps').value,10) || 24,
+        interpolatedFrames: parseInt(document.getElementById('blend').value,10) || 0,
+        frameCount: animKeys.length,
+        frames: animKeys.map(function(p, idx){
+          var frame = {frame: idx + 1, pose: namedPose(p)};
+          if(includeWorld) frame.worldJoints = worldDataForPose(p);
+          return frame;
+        })
+      };
+    }
+    return ctxObj;
+  }
+  function buildPromptText(){
+    var goal = (document.getElementById('pbGoal') || {}).value || 'image';
+    var detail = (document.getElementById('pbDetail') || {}).value || 'normal';
+    var scope = (document.getElementById('pbScope') || {}).value || 'current';
+    var includeJson = !!(document.getElementById('pbIncludeJson') && document.getElementById('pbIncludeJson').checked);
+    var includeCamera = !!(document.getElementById('pbIncludeCamera') && document.getElementById('pbIncludeCamera').checked);
+    var extra = ((document.getElementById('pbExtra') || {}).value || '').trim();
+    var freshDefault = scope === 'default';
+    var animDurationVal = promptAnimationDuration();
+    var animFpsVal = promptAnimationFps();
+    var cur = freshDefault ? defaultPoseForPrompt() : currentPose();
+    var world = worldDataForPose(cur);
+    var maxJoint = detail === 'compact' ? 8 : (detail === 'detailed' ? 999 : 14);
+    var maxWorld = detail === 'compact' ? 8 : (detail === 'detailed' ? 999 : 16);
+    var characterText = 'a simple stick figure character';
+    var lines = [];
+
+    if(goal === 'image'){
+      lines.push('Use the pose data below to understand the exact body position for ' + characterText + '.');
+      lines.push('Goal: create or edit an image where the character matches this pose as closely as possible. Do not guess the arm, leg, torso, or head placement when the structured pose data gives a more precise answer.');
+    } else if(goal === 'pose'){
+      if(freshDefault){
+        lines.push('Generate a new compatible 3D stick-figure pose from the default neutral starting pose.');
+        lines.push('Use the same schema, joint names, axis conventions, and degree rotations as the default pose below. Return JSON that can be pasted back into the pose tool when possible.');
+      } else {
+        lines.push('Generate a new compatible 3D stick-figure pose using the supplied reference data.');
+        lines.push('Use the same schema, joint names, axis conventions, and degree rotations as the reference pose below. Return JSON that can be pasted back into the pose tool when possible.');
+      }
+    } else if(goal === 'animation_new'){
+      if(freshDefault){
+        lines.push('Generate a new short animation from the default neutral starting pose.');
+        lines.push('Use the compact sampled-frame JSON schema shown below. The animation should contain one compact frame for every rendered frame, but do not output the old verbose full-pose JSON for every frame.');
+      } else {
+        lines.push('Generate a new short animation using the supplied pose or frame data as reference.');
+        lines.push('Use the compact sampled-frame JSON schema shown below. The animation should contain one compact frame for every rendered frame, but do not output the old verbose full-pose JSON for every frame.');
+      }
+    } else if(goal === 'animation_edit'){
+      lines.push('Edit an existing stick-figure animation using the supplied frame data.');
+      lines.push('Use the compact sampled-frame JSON schema shown below. Return revised compact animation JSON that can be pasted back into the pose tool when possible.');
+      if(scope !== 'animation' && scope !== 'both'){
+        lines.push('Note: the selected data source does not include full animation frames, so ask for the missing animation frames or generate a clearly marked replacement animation from the available data.');
+      }
+    } else {
+      lines.push('Programmatic 3D pose/animation context for a simple stick figure character.');
+      lines.push('Interpret the following as structured pose data. Use exact joint rotations and world-space joint positions when translating this motion into code, game logic, image prompts, or animation instructions.');
+    }
+
+    if(freshDefault){
+      lines.push('Data source: fresh default start. Do not infer anything from the current editor pose, current selected part, current camera angle, or any saved animation unless it is explicitly included below.');
+    }
+    if(isAnimationGoal(goal)){
+      lines.push('Requested animation: ' + roundNum(animDurationVal,2) + ' seconds at ' + animFpsVal + ' FPS, for a total of ' + promptAnimationFrameCount() + ' rendered frames.');
+      if(isLongPromptAnimation()){
+        lines.push('Because this animation has ' + promptAnimationFrameCount() + ' frames, provide the completed compact animation JSON as a downloadable .json file named "' + promptJsonFileName() + '" instead of pasting the full JSON inline in the chat response.');
+      }
+    }
+    if(extra) lines.push('Extra user instruction: ' + extra);
+    if(includeCamera && !freshDefault){
+      lines.push('Current viewing camera: yaw ' + roundNum(camera.yaw,1) + ' degrees, pitch ' + roundNum(camera.pitch,1) + ' degrees, zoom distance ' + roundNum(camera.dist,2) + '.');
+    }
+    lines.push('');
+    lines.push(freshDefault ? 'Default neutral starting pose summary:' : 'Current pose summary:');
+    lines = lines.concat(nonZeroJointLines(cur, maxJoint));
+    lines.push('');
+    lines.push(freshDefault ? 'Default neutral world-space joint positions:' : 'Important world-space joint positions:');
+    lines = lines.concat(keyPointLines(world, maxWorld));
+
+    if(!freshDefault && (scope === 'animation' || scope === 'both') && animKeys.length){
+      lines.push('');
+      lines.push('Animation summary: ' + animKeys.length + ' saved animation frame(s), FPS ' + (parseInt(document.getElementById('fps').value,10) || 24) + ', interpolated frames between keys ' + (parseInt(document.getElementById('blend').value,10) || 0) + '.');
+      var frameLimit = detail === 'compact' ? Math.min(animKeys.length, 4) : animKeys.length;
+      for(var i=0;i<frameLimit;i++){
+        lines.push('Frame ' + (i+1) + ':');
+        lines = lines.concat(nonZeroJointLines(animKeys[i], detail === 'detailed' ? 999 : 6));
+      }
+      if(frameLimit < animKeys.length) lines.push('Additional frames are included in the structured JSON.');
+    } else if(!freshDefault && (scope === 'animation' || scope === 'both')){
+      lines.push('');
+      lines.push('Animation note: there are currently no saved animation frames. Use the current pose as the only reference unless the user provides more frames.');
+    }
+
+    if(includeJson){
+      lines.push('');
+      if(goal === 'animation_new' || goal === 'animation_edit'){
+        lines.push('Use this SHORT animation JSON format for your answer. Do not output the old verbose per-joint object format.');
+        lines.push('Rules: durationSec, fps, and frameCount must exactly match the requested animation above. Output exactly frameCount frames, not a small set of keyframes. Frame i is numbered 1 through frameCount and uses t = (i - 1) / fps seconds. r contains only joints that are rotated away from neutral; missing joints are neutral for that frame.');
+        lines.push('Compact animation JSON:');
+        lines.push(JSON.stringify(buildCompactAnimationJson(), null, detail === 'compact' ? 0 : 2));
+      } else {
+        lines.push('Structured pose/animation JSON:');
+        lines.push(JSON.stringify(buildLlmContext(), null, detail === 'compact' ? 0 : 2));
+      }
+    }
+    return lines.join('\n');
+  }
+  function promptBuilderSettingIds(){
+    return ['pbGoal','pbScope','pbDetail','pbDuration','pbFps','pbExtra','pbIncludeJson','pbIncludeWorld','pbIncludeCamera','pbJsonFileName'];
+  }
+  function savePromptBuilderSettings(){
+    var settings = {};
+    promptBuilderSettingIds().forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      settings[id] = el.type === 'checkbox' ? !!el.checked : el.value;
+    });
+    saveJson('pose3d_prompt_builder_settings_v1', settings);
+  }
+  function loadPromptBuilderSettings(){
+    var settings = loadJson('pose3d_prompt_builder_settings_v1', null);
+    if(!settings) return;
+    promptBuilderSettingIds().forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el || settings[id] === undefined) return;
+      if(el.type === 'checkbox') el.checked = !!settings[id];
+      else el.value = settings[id];
+    });
+  }
+  function refreshPromptBuilder(){
+    syncPromptTimingVisibility();
+    savePromptBuilderSettings();
+    var json = buildLlmContext();
+    var promptBox = document.getElementById('promptText');
+    var jsonBox = document.getElementById('promptJson');
+    if(promptBox) promptBox.value = buildPromptText();
+    if(jsonBox) jsonBox.value = JSON.stringify(json, null, 2);
+  }
+  function openPromptBuilder(){
+    var pb = document.getElementById('promptBuilder');
+    if(!pb) return;
+    loadPromptBuilderSettings();
+    var pf = document.getElementById('pbFps');
+    if(pf && !pf.value) pf.value = parseInt(document.getElementById('fps').value,10) || 24;
+    refreshPromptBuilder();
+    pb.classList.add('open');
+    pb.setAttribute('aria-hidden','false');
+  }
+  function closePromptBuilder(){
+    var pb = document.getElementById('promptBuilder');
+    if(!pb) return;
+    pb.classList.remove('open');
+    pb.setAttribute('aria-hidden','true');
+  }
+  function buttonIdleText(btn){
+    if(!btn) return '';
+    if(!btn.dataset.idleLabel) btn.dataset.idleLabel = btn.textContent || '';
+    return btn.dataset.idleLabel;
+  }
+  function resetButtonLabel(btn){
+    if(!btn) return;
+    btn.classList.remove('flashSuccess','flashWork','flashError');
+    btn.textContent = buttonIdleText(btn);
+  }
+  function flashButton(btn, cls, text, ms){
+    if(!btn) return;
+    ms = ms || 900;
+    buttonIdleText(btn);
+    btn.classList.remove('flashSuccess','flashWork','flashError');
+    btn.classList.add(cls);
+    if(text) btn.textContent = text;
+    clearTimeout(btn._flashTimer);
+    btn._flashTimer = setTimeout(function(){
+      resetButtonLabel(btn);
+    }, ms);
+  }
+
+  function copyTextFrom(id, label, btn){
+    var el = document.getElementById(id);
+    if(!el) return;
+    if(btn) buttonIdleText(btn);
+    var txt = el.value || el.textContent || '';
+
+    function blurAnythingEditable(){
+      var active = document.activeElement;
+      if(active && typeof active.blur === 'function') active.blur();
+    }
+
+    function finishCopied(){
+      blurAnythingEditable();
+      flashButton(btn, 'flashSuccess', 'Copied', 1000);
+      showToast('Copied ' + label);
+    }
+
+    function finishFailed(err){
+      blurAnythingEditable();
+      flashButton(btn, 'flashError', 'Copy failed', 1400);
+      var msg = err && err.message ? err.message : String(err || 'Browser blocked automatic copy.');
+      showToast('Copy failed - error details opened');
+      showImportError('Automatic copy failed for ' + label + '.\n\n' + msg + '\n\nThis usually means the mobile browser blocked clipboard access for a local HTML/content:// file. Try opening the file from a normal https:// page, or long-press/select the text manually.');
+    }
+
+    function fallbackCopy(){
+      blurAnythingEditable();
+      var tmp = document.createElement('textarea');
+      tmp.value = txt;
+      tmp.setAttribute('readonly', 'readonly');
+      tmp.setAttribute('aria-hidden', 'true');
+      tmp.setAttribute('inputmode', 'none');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '0';
+      tmp.style.top = '0';
+      tmp.style.width = '1px';
+      tmp.style.height = '1px';
+      tmp.style.opacity = '0.01';
+      tmp.style.zIndex = '-1';
+      document.body.appendChild(tmp);
+      var ok = false;
+      try {
+        tmp.focus({preventScroll:true});
+        tmp.select();
+        tmp.setSelectionRange(0, tmp.value.length);
+        ok = document.execCommand && document.execCommand('copy');
+      } catch(err) {
+        document.body.removeChild(tmp);
+        finishFailed(err);
+        return;
+      }
+      document.body.removeChild(tmp);
+      if(ok) finishCopied();
+      else finishFailed('document.execCommand(\'copy\') returned false.');
+    }
+
+    flashButton(btn, 'flashWork', 'Copying...', 600);
+
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(finishCopied, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  }
+
+  function updatePlayButton(){
+    var b = document.getElementById('playAnim');
+    if(!b) return;
+    b.textContent = playing ? 'Playing' : 'Play';
+    b.classList.toggle('active', playing);
+  }
+
+  function startAnimation(){
+    if(animKeys.length < 2){
+      showToast('Add at least 2 frames first');
+      return;
+    }
+    playing = true;
+    playStart = performance.now();
+    lastPlayKey = -1;
+    updatePlayButton();
+    refreshKeys();
+  }
+
+  function stopAnimation(){
+    playing = false;
+    lastPlayKey = -1;
+    updatePlayButton();
+    refreshKeys();
+  }
+
+  function animationLoop(ts){
+    if(playing && animKeys.length >= 2){
+      var fps = parseInt(document.getElementById('fps').value,10) || 12;
+      var blend = parseInt(document.getElementById('blend').value,10) || 0;
+      var frameSpan = Math.max(1, blend + 1);
+      var totalSteps = Math.max(1, animKeys.length * frameSpan);
+      var rawStep = Math.floor((ts - playStart) / (1000 / fps));
+      var step = ((rawStep % totalSteps) + totalSteps) % totalSteps;
+      var aIdx = Math.floor(step / frameSpan) % animKeys.length;
+      var bIdx = (aIdx + 1) % animKeys.length;
+      var t = blend ? (step % frameSpan) / frameSpan : 0;
+
+      if(aIdx !== lastPlayKey){
+        lastPlayKey = aIdx;
+        activeKey = aIdx;
+        refreshKeys();
+      }
+
+      applyPose(interpPose(animKeys[aIdx], animKeys[bIdx], t), true);
+    } else if(playing && animKeys.length === 1){
+      stopAnimation();
+      setActiveKey(0, true);
+      showToast('Add at least 2 frames to play animation');
+    }
+    requestAnimationFrame(animationLoop);
+  }
+
+  var pb=document.getElementById('poseBtn'); if(pb) pb.onclick = function(){ setPanel(openPanel === 'pose' ? 'none' : 'pose'); };
+  document.getElementById('toolsBtn').onclick = function(){ setPanel(openPanel === 'tools' ? 'pose' : 'tools'); };
+  var hb=document.getElementById('hideBtn'); if(hb) hb.onclick = function(){ setPanel('pose'); };
+  var sc=document.getElementById('settingsClose'); if(sc) sc.onclick = function(){ setPanel('pose'); };
+  var cd=document.getElementById('closeDock'); if(cd) cd.onclick = function(){ setPanel('pose'); };
+  var mb=document.getElementById('modeBtn'); if(mb) mb.onclick = function(){ showBodyControls=!showBodyControls; refreshControls(); draw(); };
+  Array.prototype.forEach.call(document.querySelectorAll('.hidePanel'), function(b){ b.onclick = function(){ setPanel('pose'); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-view]'), function(b){ b.onclick = function(){ setView(b.getAttribute('data-view')); }; });
+  document.getElementById('lockBtn').onclick = function(){ locked = !locked; this.classList.toggle('active', locked); };
+  document.getElementById('jointSelect').onchange = function(){ selectJoint(this.value); };
+  document.getElementById('resetPose').onclick = resetPose;
+  document.getElementById('centerBody').onclick = function(){ pushUndo(); root.pos = [0,0,0]; refreshControls(); draw(); };
+  document.getElementById('flipLR').onclick = flipLR;
+  document.getElementById('flipUD').onclick = flipUD;
+  document.getElementById('zeroJoint').onclick = function(){ pushUndo(); byId[selected].rot=[0,0,0]; refreshControls(); draw(); };
+  document.getElementById('prevJoint').onclick = function(){ var i=joints.findIndex(function(j){return j.id===selected;}); selectJoint(joints[(i+joints.length-1)%joints.length].id); };
+  document.getElementById('nextJoint').onclick = function(){ var i=joints.findIndex(function(j){return j.id===selected;}); selectJoint(joints[(i+1)%joints.length].id); };
+  document.getElementById('gridBtn').onclick = function(){ showGrid=!showGrid; this.classList.toggle('active', showGrid); draw(); };
+  document.getElementById('axisBtn').onclick = function(){ showAxis=!showAxis; this.classList.toggle('active', showAxis); draw(); };
+  document.getElementById('undoBtn').onclick = undo;
+  document.getElementById('redoBtn').onclick = redo;
+  document.getElementById('savePose').onclick = function(){
+    var n=document.getElementById('poseName').value.trim() || ('Pose ' + new Date().toLocaleTimeString());
+    document.getElementById('poseName').value = n;
+    saved[n]=currentPose();
+    saveJson('pose3d_saved_v2', saved);
+    refreshSaved();
+    var list = document.getElementById('savedList');
+    if(list) list.value = n;
+    showToast('Saved "' + n + '"');
+  };
+  document.getElementById('deletePose').onclick = function(){ var n=document.getElementById('savedList').value; if(n){ delete saved[n]; saveJson('pose3d_saved_v2', saved); refreshSaved(); showToast('Deleted "' + n + '"'); } };
+  document.getElementById('loadPose').onclick = function(){
+    var typed = document.getElementById('poseName').value.trim();
+    if(typed && saved[typed]){
+      pushUndo();
+      applyPose(saved[typed]);
+      showToast('Loaded "' + typed + '"');
+      return;
+    }
+    openLoadDialog();
+  };
+  document.getElementById('exportPose').onclick = function(){
+    var box = document.getElementById('importBox');
+    box.value = JSON.stringify({ type:'pose3d-pose', version:1, name:document.getElementById('poseName').value.trim() || 'pose', pose:currentPose() }, null, 2);
+    box.focus();
+    box.select();
+    showToast('Exported current pose JSON');
+  };
+  document.getElementById('exportAnim').onclick = function(){
+    if(!animKeys.length){
+      showToast('No animation frames yet. Use Add first.');
+      return;
+    }
+    var box = document.getElementById('importBox');
+    box.value = JSON.stringify({
+      type:'pose3d-animation',
+      version:1,
+      name:(document.getElementById('poseName').value.trim() || 'animation'),
+      fps:parseInt(document.getElementById('fps').value,10) || 24,
+      interpolatedFrames:parseInt(document.getElementById('blend').value,10) || 0,
+      frameCount:animKeys.length,
+      frames:animKeys
+    }, null, 2);
+    box.focus();
+    box.select();
+    showToast('Exported animation JSON with ' + animKeys.length + ' frame' + (animKeys.length === 1 ? '' : 's'));
+  };
+  function getJsonSyntaxLocation(text, err){
+    var msg = err && err.message ? String(err.message) : '';
+    var m = msg.match(/position\s+(\d+)/i);
+    if(!m) m = msg.match(/at\s+position\s+(\d+)/i);
+    if(!m) return null;
+    var pos = parseInt(m[1], 10);
+    if(!isFinite(pos)) return null;
+    var before = text.slice(0, pos);
+    var lines = before.split(/\r?\n/);
+    return { position: pos, line: lines.length, column: lines[lines.length - 1].length + 1 };
+  }
+
+  function extractLikelyJson(text){
+    var raw = String(text || '').trim();
+    if(!raw) return { text: '', note: 'Import box is empty.' };
+
+    var fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if(fence && fence[1]){
+      return { text: fence[1].trim(), note: 'Found JSON inside a code fence and tried to parse that.' };
+    }
+
+    var firstObj = raw.indexOf('{');
+    var firstArr = raw.indexOf('[');
+    var first = -1;
+    if(firstObj >= 0 && firstArr >= 0) first = Math.min(firstObj, firstArr);
+    else first = Math.max(firstObj, firstArr);
+    if(first > 0){
+      var lastObj = raw.lastIndexOf('}');
+      var lastArr = raw.lastIndexOf(']');
+      var last = Math.max(lastObj, lastArr);
+      if(last > first){
+        return { text: raw.slice(first, last + 1).trim(), note: 'Trimmed extra text before or after the JSON and tried to parse the JSON-looking part.' };
+      }
+    }
+
+    return { text: raw, note: '' };
+  }
+
+  function parseImportJsonWithDetails(rawText){
+    var extracted = extractLikelyJson(rawText);
+    if(!extracted.text){
+      throw new Error('Import box is empty. Paste pose JSON, animation JSON, compact animation JSON, or LLM context JSON first.');
+    }
+    try {
+      var data = JSON.parse(extracted.text);
+      return { data: data, parsedText: extracted.text, note: extracted.note };
+    } catch(err){
+      var loc = getJsonSyntaxLocation(extracted.text, err);
+      var detail = 'JSON syntax error: ' + (err && err.message ? err.message : String(err));
+      if(loc){
+        var lineText = extracted.text.split(/\r?\n/)[loc.line - 1] || '';
+        detail += '\nLine: ' + loc.line + ', Column: ' + loc.column + ', Character position: ' + loc.position;
+        detail += '\nNearby line:\n' + lineText;
+        detail += '\n' + Array(Math.max(1, loc.column)).join(' ') + '^';
+      }
+      if(extracted.note) detail += '\n\nParser note: ' + extracted.note;
+      var e = new Error(detail);
+      e.importStage = 'parse';
+      throw e;
+    }
+  }
+
+  function describeImportShape(data){
+    if(data === null) return 'null';
+    if(Array.isArray(data)) return 'array length ' + data.length;
+    if(typeof data !== 'object') return typeof data;
+    var keys = Object.keys(data).slice(0, 18);
+    return 'object keys: ' + (keys.length ? keys.join(', ') : '(none)') + (Object.keys(data).length > keys.length ? ', ...' : '');
+  }
+
+  function buildUnsupportedImportMessage(data){
+    var type = data && data.type ? String(data.type) : '(missing)';
+    var lines = [];
+    lines.push('Import failed: the JSON parsed, but it was not a supported pose or animation shape.');
+    lines.push('Detected type: ' + type);
+    lines.push('Detected shape: ' + describeImportShape(data));
+    lines.push('');
+    lines.push('Supported imports:');
+    lines.push('1. Single pose: { "root": { "pos": [0,0,0], "rot": [0,0,0] }, "joints": [{ "id": "lShoulder", "rot": [0,0,-45] }] }');
+    lines.push('2. Wrapped pose: { "type": "pose3d-pose", "pose": { "root": ..., "joints": ... } }');
+    lines.push('3. Verbose animation: { "type": "pose3d-animation", "frames": [pose, pose, ...] }');
+    lines.push('4. Compact animation: { "type": "pose3d-animation-compact", "fps": 24, "frames": [{ "t": 0, "r": { "ls": [0,0,-30] } }] }');
+    lines.push('5. LLM context export with currentPose or animation.frames.');
+    lines.push('');
+    lines.push('For compact animation, use these short joint ids:');
+    lines.push('p pelvis, s spine, c chest, n neck, h head, ls left shoulder, le left elbow, lh left hand, rs right shoulder, re right elbow, rh right hand, lhx left hip, lk left knee, lf left foot, rhx right hip, rk right knee, rf right foot.');
+    return lines.join('\n');
+  }
+
+  function showImportError(message){
+    var dialog = document.getElementById('importErrorDialog');
+    var text = document.getElementById('importErrorText');
+    if(text) text.value = message;
+    if(dialog){
+      dialog.classList.add('open');
+      dialog.setAttribute('aria-hidden','false');
+    } else {
+      alert(message);
+    }
+  }
+
+  function closeImportError(){
+    var dialog = document.getElementById('importErrorDialog');
+    if(dialog){
+      dialog.classList.remove('open');
+      dialog.setAttribute('aria-hidden','true');
+    }
+  }
+
+  function importJsonText(rawImportText, sourceLabel){
+    try {
+      var parsed = parseImportJsonWithDetails(rawImportText);
+      var data = parsed.data;
+      var importedAnim = normalizeImportedAnimation(data);
+      if(importedAnim){
+        stopAnimation();
+        animKeys = importedAnim;
+        activeKey = 0;
+        lastPlayKey = -1;
+        if(data.fps) document.getElementById('fps').value = data.fps;
+        if(data.interpolatedFrames !== undefined) document.getElementById('blend').value = data.interpolatedFrames;
+        if(data.animation){
+          if(data.animation.fps) document.getElementById('fps').value = data.animation.fps;
+          if(data.animation.interpolatedFrames !== undefined) document.getElementById('blend').value = data.animation.interpolatedFrames;
+        }
+        saveAnimKeys();
+        refreshKeys();
+        if(animKeys[0]){ pushUndo(); applyPose(animKeys[0]); }
+        showToast('Imported animation from ' + sourceLabel + ' with ' + animKeys.length + ' frame' + (animKeys.length === 1 ? '' : 's'));
+        return;
+      }
+
+      var importedPose = normalizeImportedPose(data);
+      if(!importedPose){ throw new Error(buildUnsupportedImportMessage(data)); }
+      pushUndo();
+      applyPose(importedPose);
+      if(data.poseName && document.getElementById('poseName')) document.getElementById('poseName').value = data.poseName;
+      if(data.name && document.getElementById('poseName')) document.getElementById('poseName').value = data.name;
+      showToast('Imported pose from ' + sourceLabel + ' and applied it');
+    } catch(e){
+      var msg = e && e.message ? e.message : String(e);
+      showImportError(msg);
+      showToast('Import failed. Error details are open.');
+    }
+  }
+
+  document.getElementById('importPose').onclick = function(){
+    importJsonText(document.getElementById('importBox').value, 'pasted JSON');
+  };
+
+  var importJsonFileBtn = document.getElementById('importJsonFileBtn');
+  var importJsonFileInput = document.getElementById('importJsonFile');
+  if(importJsonFileBtn && importJsonFileInput){
+    importJsonFileBtn.onclick = function(){ importJsonFileInput.click(); };
+    importJsonFileInput.onchange = function(){
+      var file = importJsonFileInput.files && importJsonFileInput.files[0];
+      if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var text = String(reader.result || '');
+        var box = document.getElementById('importBox');
+        if(box) box.value = text;
+        importJsonText(text, file.name || '.json file');
+        importJsonFileInput.value = '';
+      };
+      reader.onerror = function(){
+        showImportError('Could not read the selected JSON file. Browser error: ' + (reader.error && reader.error.message ? reader.error.message : 'unknown file read error'));
+        importJsonFileInput.value = '';
+      };
+      reader.readAsText(file);
+    };
+  }
+
+  loadPromptBuilderSettings();
+  syncPromptTimingVisibility();
+  var pbb=document.getElementById('promptBuilderBtn'); if(pbb) pbb.onclick=function(){ openPromptBuilder(); };
+  var pc=document.getElementById('promptClose'); if(pc) pc.onclick=closePromptBuilder;
+  var pd=document.getElementById('promptDone'); if(pd) pd.onclick=closePromptBuilder;
+  function wireNoKeyboardCopyButton(btn, textId, label){
+    if(!btn) return;
+    function blurOnly(){
+      if(document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
+    }
+    btn.addEventListener('pointerdown', blurOnly, {passive:true});
+    btn.addEventListener('mousedown', blurOnly);
+    btn.addEventListener('click', function(e){
+      if(e){ e.preventDefault(); e.stopPropagation(); }
+      blurOnly();
+      copyTextFrom(textId, label, btn);
+    });
+  }
+  var promptCopyButton = document.getElementById('promptCopy');
+  var promptCopyJsonButton = document.getElementById('promptCopyJson');
+  if(promptCopyButton){ promptCopyButton.textContent = 'Copy'; promptCopyButton.dataset.idleLabel = 'Copy'; }
+  if(promptCopyJsonButton){ promptCopyJsonButton.dataset.idleLabel = promptCopyJsonButton.textContent || 'Copy JSON'; }
+  wireNoKeyboardCopyButton(promptCopyButton, 'promptText', 'prompt');
+  wireNoKeyboardCopyButton(promptCopyJsonButton, 'promptJson', 'JSON');
+  wireNoKeyboardCopyButton(document.getElementById('importErrorCopy'), 'importErrorText', 'import error');
+  var iec=document.getElementById('importErrorClose'); if(iec) iec.onclick=closeImportError;
+  var iec2=document.getElementById('importErrorClose2'); if(iec2) iec2.onclick=closeImportError;
+  var wh=document.getElementById('pbWorldHelp');
+  if(wh) wh.onclick=function(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); }
+    var dialog=document.getElementById('worldHelpDialog');
+    if(dialog){ dialog.classList.add('open'); dialog.setAttribute('aria-hidden','false'); }
+  };
+  var whc=document.getElementById('worldHelpClose');
+  if(whc) whc.onclick=function(){
+    var dialog=document.getElementById('worldHelpDialog');
+    if(dialog){ dialog.classList.remove('open'); dialog.setAttribute('aria-hidden','true'); }
+  };
+  var jf=document.getElementById('pbJsonFileHelp');
+  if(jf) jf.onclick=function(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); }
+    var dialog=document.getElementById('jsonFileHelpDialog');
+    if(dialog){ dialog.classList.add('open'); dialog.setAttribute('aria-hidden','false'); }
+  };
+  var jfc=document.getElementById('jsonFileHelpClose');
+  if(jfc) jfc.onclick=function(){
+    var dialog=document.getElementById('jsonFileHelpDialog');
+    if(dialog){ dialog.classList.remove('open'); dialog.setAttribute('aria-hidden','true'); }
+  };
+  ['pbGoal','pbScope','pbDetail','pbDuration','pbFps','pbExtra','pbIncludeJson','pbIncludeWorld','pbIncludeCamera','pbJsonFileName'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.addEventListener('input', refreshPromptBuilder); el.addEventListener('change', refreshPromptBuilder); }
+  });
+
+  function downloadCleanPng(){
+    var oldClean = cleanCaptureMode;
+    var oldShowAxis = showAxis;
+    var oldXGrid = xGridOn;
+    var oldZGrid = zGridOn;
+    var oldDots = dotsOn;
+    cleanCaptureMode = true;
+    showAxis = false;
+    xGridOn = false;
+    zGridOn = false;
+    dotsOn = false;
+    draw();
+    var a = document.createElement('a');
+    a.download = 'pose.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    cleanCaptureMode = oldClean;
+    showAxis = oldShowAxis;
+    xGridOn = oldXGrid;
+    zGridOn = oldZGrid;
+    dotsOn = oldDots;
+    draw();
+  }
+
+  document.getElementById('addKey').onclick = addFrame;
+  document.getElementById('insertKey').onclick = insertFrame;
+  document.getElementById('overwriteKey').onclick = overwriteFrame;
+  document.getElementById('deleteKey').onclick = deleteFrame;
+  document.getElementById('clearKeys').onclick = function(){ stopAnimation(); animKeys=[]; activeKey=0; lastPlayKey=-1; saveAnimKeys(); refreshKeys(); showToast('Cleared animation frames'); };
+  document.getElementById('playAnim').onclick = function(){ if(playing){ stopAnimation(); } else { startAnimation(); } };
+  document.getElementById('stopAnim').onclick = stopAnimation;
+  document.getElementById('pngBtn').onclick = downloadCleanPng;
+
+
+  var xgb=document.getElementById('xGridBtn'); if(xgb) xgb.onclick=function(){ xGridOn=!xGridOn; this.classList.toggle('active', xGridOn); draw(); };
+  var zgb=document.getElementById('zGridBtn'); if(zgb) zgb.onclick=function(){ zGridOn=!zGridOn; this.classList.toggle('active', zGridOn); draw(); };
+  var dt=document.getElementById('dotToggle'); if(dt) dt.onclick=function(){ dotsOn=!dotsOn; this.classList.toggle('active', dotsOn); draw(); };
+  var lw=document.getElementById('lineWidth'); if(lw) lw.oninput=function(){ lineWidth=parseFloat(this.value)||6; draw(); };
+  var hs=document.getElementById('headSize'); if(hs) hs.oninput=function(){ headSize=parseFloat(this.value)||32; draw(); };
+  var pt=document.getElementById('perspectiveToggle'); if(pt) pt.onchange=function(){ perspectiveOn=this.checked; draw(); };
+  var mt=document.getElementById('monochromeToggle'); if(mt){ mt.checked=monochromeLimbs; mt.onchange=function(){ monochromeLimbs=this.checked; draw(); }; }
+  var ldc=document.getElementById('loadDialogClose'); if(ldc) ldc.onclick=closeLoadDialog;
+  var ld=document.getElementById('loadDialog'); if(ld) ld.addEventListener('click', function(e){ if(e.target === ld) closeLoadDialog(); });
+
+  window.addEventListener('resize', resize);
+  buildControls();
+  refreshSaved();
+  refreshKeys();
+  resize();
+  setPanel('pose');
+  requestAnimationFrame(animationLoop);
+})();
+</script>
+</body>
+</html>
